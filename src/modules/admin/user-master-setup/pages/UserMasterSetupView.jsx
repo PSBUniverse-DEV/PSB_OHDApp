@@ -50,14 +50,14 @@ function useUserPanel({
   const panelEditable = panelMode === "edit" || panelMode === "add";
   const canDeactivateCurrentUser = panelMode !== "add" && normalizeText(panelUserId) !== "" && !isTemporaryId(panelUserId);
 
-  function resetPanelState() {
+  const resetPanelState = useCallback(() => {
     const f = createEmptyForm();
     setPanelOpen(false); setPanelMode("view"); setPanelUserId(null); setActiveTab("profile");
     setForm(f); setBaselineForm(f); setAccessRows([]); setBaselineAccessRows([]);
     setEnableNewPassword(false); setNewPasswordValue(""); setConfirmNewPassword("");
     setAccessEditor(EMPTY_ACCESS_EDITOR);
     setBaselineSnapshot(buildPanelSnapshot(f, [], false, "", "")); setIsPanelLoading(false);
-  }
+  }, []);
 
   function requestDiscardDraftConfirmation(onConfirm) {
     if (!panelDirty) { onConfirm(); return; }
@@ -72,7 +72,7 @@ function useUserPanel({
     if (typeof onConfirm === "function") onConfirm();
   }, [pendingDiscardDraftAction]);
 
-  function updateTableRow(nextRow, { prepend = false } = {}) {
+  const updateTableRow = useCallback((nextRow, { prepend = false } = {}) => {
     const nextId = rowIdOf(nextRow);
     if (!nextId) return;
     setTableRows((prev) => {
@@ -80,7 +80,7 @@ function useUserPanel({
       if (idx < 0) return prepend ? [nextRow, ...prev] : [...prev, nextRow];
       const copy = [...prev]; copy[idx] = nextRow; return copy;
     });
-  }
+  }, [setTableRows]);
 
   const openExistingUserPanel = useCallback((row, mode) => {
     const userId = rowIdOf(row);
@@ -211,15 +211,15 @@ function useUserPanel({
       toastError(error?.message || "Failed to stage changes.", "User Master Setup");
     } finally { setIsStaging(false); }
   }, [accessRows, baselineAccessRows, confirmNewPassword, enableNewPassword, form, lookups,
-    newPasswordValue, panelEditable, panelMode, panelUserId, selectedUserRow, setPendingBatch, setTableRows]); // eslint-disable-line react-hooks/exhaustive-deps
+    newPasswordValue, panelEditable, panelMode, panelUserId, resetPanelState, selectedUserRow, setPendingBatch, updateTableRow]);
 
   const restorePanelToBaseline = useCallback(() => {
-    if (panelMode === "add") { resetPanelState(); return; } // eslint-disable-line react-hooks/exhaustive-deps
+    if (panelMode === "add") { resetPanelState(); return; }
     setForm(cloneForm(baselineForm)); setAccessRows(cloneAccessRows(baselineAccessRows));
     setEnableNewPassword(false); setNewPasswordValue(""); setConfirmNewPassword("");
     setAccessEditor(EMPTY_ACCESS_EDITOR);
     setBaselineSnapshot(buildPanelSnapshot(baselineForm, baselineAccessRows, false, "", ""));
-  }, [baselineAccessRows, baselineForm, panelMode]);
+  }, [baselineAccessRows, baselineForm, panelMode, resetPanelState]);
 
   return {
     panelOpen, panelMode, panelUserId, activeTab, isPanelLoading, panelDirty, panelEditable,
@@ -306,7 +306,7 @@ function useUserMasterSetup({ users = [], totalUsers = 0 }) {
       toastSuccess("Batch saved successfully.", "User Master Setup");
     } catch (error) { toastError(error?.message || "Failed to save staged batch.", "User Master Setup"); }
     finally { setIsSavingBatch(false); }
-  }, [hasPendingChanges, panel.panelDirty, panel.panelUserId, panel.resetPanelState, pendingBatch, refreshUsers]);
+  }, [hasPendingChanges, panel, pendingBatch, refreshUsers]);
 
   const cancelBatch = useCallback(() => {
     if (!hasPendingChanges) { toastInfo("There are no staged changes to cancel.", "User Master Setup"); return; }
@@ -319,13 +319,13 @@ function useUserMasterSetup({ users = [], totalUsers = 0 }) {
     await refreshUsers({ silent: true });
     if (isTemporaryId(panel.panelUserId)) panel.resetPanelState();
     toastSuccess("Staged batch changes canceled.", "User Master Setup");
-  }, [panel.panelUserId, panel.resetPanelState, refreshUsers]);
+  }, [panel, refreshUsers]);
 
   const deactivateCurrentUser = useCallback(() => {
     const userId = normalizeText(panel.panelUserId);
     if (!userId || isTemporaryId(userId)) { toastError("Invalid user selected for deactivation.", "User Master Setup"); return; }
     setShowDeactivateUserModal(true);
-  }, [panel.panelUserId]);
+  }, [panel]);
 
   const confirmDeactivateCurrentUser = useCallback(async () => {
     setShowDeactivateUserModal(false);
@@ -343,7 +343,7 @@ function useUserMasterSetup({ users = [], totalUsers = 0 }) {
       toastSuccess(`User deactivated successfully. Revoked ${revokedCount} access mapping(s).`, "User Master Setup");
     } catch (error) { toastError(error?.message || "Failed to deactivate user.", "User Master Setup"); }
     finally { setIsDeactivatingUser(false); }
-  }, [panel.panelUserId, panel.resetPanelState, refreshUsers]);
+  }, [panel, refreshUsers]);
 
   return {
     tableRows, lookups, isRefreshing, isLoadingLookups, isSavingBatch, isDeactivatingUser,

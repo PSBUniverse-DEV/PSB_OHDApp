@@ -1,21 +1,35 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Button, Card, InlineEditCell, Input, Modal, StatusBadge, TableZ, toastError, toastSuccess } from "@/shared/components/ui";
+import { Button, Input, Modal, StatusBadge, TableZ, toastError, toastSuccess } from "@/shared/components/ui";
 import {
   parseId, isSameId, compareText, buildOrderSignature,
   mapGroupRow, mapCardRow, removeObjectKey, mergeUpdatePatch, appendUniqueId,
   EMPTY_DIALOG, TEMP_GROUP_PREFIX, TEMP_CARD_PREFIX, createTempId,
   isTempGroupId, isTempCardId, createEmptyBatchState, executeBatchSave,
 } from "../data/cardModuleSetup.data.js";
+import { loadCardRoleAccessByApp } from "../data/cardModuleSetup.actions.js";
+
+// ─── BATCH MARKER HELPER ────────────────────────────────────
+
+function batchMarker(bs) {
+  const map = {
+    hardDeleted: { t: "Deleted", c: "psb-batch-marker psb-batch-marker-deleted" },
+    deleted: { t: "Deactivated", c: "psb-batch-marker psb-batch-marker-deleted" },
+    created: { t: "New", c: "psb-batch-marker psb-batch-marker-new" },
+    updated: { t: "Edited", c: "psb-batch-marker psb-batch-marker-edited" },
+    reordered: { t: "Reordered", c: "psb-batch-marker psb-batch-marker-reordered" },
+  };
+  return map[bs] || { t: "", c: "" };
+}
 
 // ─── HOOK: useGroupActions ─────────────────────────────────
 
 function useGroupActions({
   isSaving, isMutatingAction, selectedApp, appGroups, allCards, orderedGroups,
-  selectedGroup, dialog, groupDraft, pendingDeactivatedGroupIds,
-  setOrderedGroups, setAllCards, setPendingBatch, setDialog, setGroupDraft, updateQueryParams,
+  pendingDeactivatedGroupIds, dialog, groupDraft,
+  setOrderedGroups, setAllCards, setPendingBatch, setDialog, setGroupDraft,
 }) {
   const openAddGroupDialog = useCallback(() => {
     if (isSaving || isMutatingAction) return;
@@ -23,33 +37,6 @@ function useGroupActions({
     setGroupDraft({ name: "", desc: "", icon: "" });
     setDialog({ kind: "add-group", target: { app_id: selectedApp.app_id }, nextIsActive: true });
   }, [isMutatingAction, isSaving, selectedApp, setDialog, setGroupDraft]);
-
-  const openEditGroupDialog = useCallback((row) => {
-    if (isSaving || isMutatingAction) return;
-    setGroupDraft({ name: String(row?.group_name || ""), desc: String(row?.group_desc || ""), icon: String(row?.group_icon || row?.icon || "") });
-    setDialog({ kind: "edit-group", target: row, nextIsActive: null });
-  }, [isMutatingAction, isSaving, setDialog, setGroupDraft]);
-
-  const openToggleGroupDialog = useCallback((row) => {
-    if (isSaving || isMutatingAction) return;
-    const groupId = String(row?.group_id ?? "");
-    if (pendingDeactivatedGroupIds.has(groupId)) {
-      const linkedCardIds = allCards.filter((c) => isSameId(c?.group_id, groupId)).map((c) => String(c?.card_id ?? ""));
-      setPendingBatch((prev) => ({
-        ...prev,
-        groupDeactivations: (prev.groupDeactivations || []).filter((id) => !isSameId(id, groupId)),
-        cardDeactivations: (prev.cardDeactivations || []).filter((id) => !linkedCardIds.some((lr) => isSameId(lr, id))),
-      }));
-      toastSuccess("Card group deactivation un-staged.", "Batching");
-      return;
-    }
-    setDialog({ kind: "toggle-group", target: row, nextIsActive: !Boolean(row?.is_active_bool) });
-  }, [allCards, isMutatingAction, isSaving, pendingDeactivatedGroupIds, setDialog, setPendingBatch]);
-
-  const openDeactivateGroupDialog = useCallback((row) => {
-    if (isSaving || isMutatingAction) return;
-    setDialog({ kind: "deactivate-group", target: row, nextIsActive: null });
-  }, [isMutatingAction, isSaving, setDialog]);
 
   const submitAddGroup = useCallback(() => {
     const groupName = String(groupDraft.name || "").trim();
@@ -64,9 +51,9 @@ function useGroupActions({
     setPendingBatch((prev) => ({ ...prev, groupCreates: [...prev.groupCreates, {
       tempId: tempGroupId, payload: { app_id: selectedApp?.app_id, group_name: groupName, group_desc: groupDesc, icon: groupIcon, is_active: true },
     }]}));
-    updateQueryParams({ group: tempGroupId }); setDialog(EMPTY_DIALOG); setGroupDraft({ name: "", desc: "", icon: "" });
+    setDialog(EMPTY_DIALOG); setGroupDraft({ name: "", desc: "", icon: "" });
     toastSuccess("Card group staged for Save Batch.", "Batching");
-  }, [appGroups.length, groupDraft, selectedApp, setDialog, setGroupDraft, setOrderedGroups, setPendingBatch, updateQueryParams]);
+  }, [appGroups.length, groupDraft, selectedApp, setDialog, setGroupDraft, setOrderedGroups, setPendingBatch]);
 
   const submitEditGroup = useCallback(() => {
     const row = dialog?.target;
@@ -88,25 +75,27 @@ function useGroupActions({
     toastSuccess("Card group update staged for Save Batch.", "Batching");
   }, [dialog, groupDraft, setDialog, setOrderedGroups, setPendingBatch]);
 
-  const submitToggleGroup = useCallback(() => {
-    const row = dialog?.target; const nextIsActive = Boolean(dialog?.nextIsActive);
-    if (!row?.group_id) { toastError("Invalid card group."); return; }
-    const groupId = row.group_id;
-    setOrderedGroups((prev) => prev.map((g, i) => isSameId(g?.group_id, groupId) ? mapGroupRow({ ...g, is_active: nextIsActive }, i) : g));
-    setPendingBatch((prev) => {
-      if (isTempGroupId(groupId)) {
-        return { ...prev, groupCreates: prev.groupCreates.map((e) => isSameId(e?.tempId, groupId) ? { ...e, payload: { ...e.payload, is_active: nextIsActive } } : e), groupUpdates: removeObjectKey(prev.groupUpdates, groupId) };
-      }
-      return { ...prev, groupUpdates: { ...prev.groupUpdates, [String(groupId)]: mergeUpdatePatch(prev.groupUpdates?.[String(groupId)], { is_active: nextIsActive }) } };
-    });
-    setDialog(EMPTY_DIALOG);
-    toastSuccess(`Card group ${nextIsActive ? "enable" : "disable"} staged for Save Batch.`, "Batching");
-  }, [dialog, setDialog, setOrderedGroups, setPendingBatch]);
+  const openEditGroupDialog = useCallback((row) => {
+    if (isSaving || isMutatingAction) return;
+    setGroupDraft({ name: String(row?.group_name || ""), desc: String(row?.group_desc || ""), icon: String(row?.group_icon || row?.icon || "") });
+    setDialog({ kind: "edit-group", target: row, nextIsActive: null });
+  }, [isMutatingAction, isSaving, setDialog, setGroupDraft]);
 
-  const submitDeactivateGroup = useCallback(() => {
-    const row = dialog?.target;
-    if (!row?.group_id) { toastError("Invalid card group."); return; }
-    const groupId = row.group_id;
+  const stageDeactivateGroup = useCallback((row) => {
+    const groupId = String(row?.group_id ?? "");
+    if (!groupId || isSaving || isMutatingAction) return;
+
+    if (pendingDeactivatedGroupIds.has(groupId)) {
+      const linkedCardIds = allCards.filter((c) => isSameId(c?.group_id, groupId)).map((c) => String(c?.card_id ?? ""));
+      setPendingBatch((prev) => ({
+        ...prev,
+        groupDeactivations: (prev.groupDeactivations || []).filter((id) => !isSameId(id, groupId)),
+        cardDeactivations: (prev.cardDeactivations || []).filter((id) => !linkedCardIds.some((lr) => isSameId(lr, id))),
+      }));
+      toastSuccess("Card group deactivation un-staged.", "Batching");
+      return;
+    }
+
     const linkedCardIds = allCards.filter((c) => isSameId(c?.group_id, groupId)).map((c) => String(c?.card_id ?? ""));
 
     if (isTempGroupId(groupId)) {
@@ -121,11 +110,7 @@ function useGroupActions({
         cardUpdates: linkedCardIds.reduce((m, id) => removeObjectKey(m, id), prev.cardUpdates),
         cardDeactivations: (prev.cardDeactivations || []).filter((id) => !linkedCardIds.some((lr) => isSameId(lr, id))),
       }));
-      if (isSameId(selectedGroup?.group_id, groupId)) {
-        const remaining = nextGroups.filter((g) => isSameId(g?.app_id, selectedApp?.app_id));
-        updateQueryParams({ group: remaining[0]?.group_id ?? null });
-      }
-      setDialog(EMPTY_DIALOG); toastSuccess("Card group deactivation staged for Save Batch.", "Batching"); return;
+      toastSuccess("Staged card group removed.", "Batching"); return;
     }
 
     setPendingBatch((prev) => {
@@ -137,8 +122,8 @@ function useGroupActions({
         cardDeactivations: nextCardDeactivations,
       };
     });
-    setDialog(EMPTY_DIALOG); toastSuccess("Card group deactivation staged for Save Batch.", "Batching");
-  }, [allCards, dialog, orderedGroups, selectedApp, selectedGroup, setAllCards, setDialog, setOrderedGroups, setPendingBatch, updateQueryParams]);
+    toastSuccess("Card group deactivation staged for Save Batch.", "Batching");
+  }, [allCards, isMutatingAction, isSaving, orderedGroups, pendingDeactivatedGroupIds, setAllCards, setOrderedGroups, setPendingBatch]);
 
   const stageHardDeleteGroup = useCallback((row) => {
     const groupId = String(row?.group_id ?? "");
@@ -157,10 +142,6 @@ function useGroupActions({
         cardDeactivations: (prev.cardDeactivations || []).filter((id) => !linkedCardIds.some((lr) => isSameId(lr, id))),
         cardHardDeletes: (prev.cardHardDeletes || []).filter((id) => !linkedCardIds.some((lr) => isSameId(lr, id))),
       }));
-      if (isSameId(selectedGroup?.group_id, groupId)) {
-        const remaining = nextGroups.filter((g) => isSameId(g?.app_id, selectedApp?.app_id));
-        updateQueryParams({ group: remaining[0]?.group_id ?? null });
-      }
       toastSuccess("Staged card group removed.", "Batching"); return;
     }
 
@@ -177,60 +158,32 @@ function useGroupActions({
       ),
     }));
     toastSuccess("Card group deletion staged for Save Batch.", "Batching");
-  }, [allCards, isMutatingAction, isSaving, orderedGroups, selectedApp, selectedGroup, setAllCards, setOrderedGroups, setPendingBatch, updateQueryParams]);
-
-  const unstageHardDeleteGroup = useCallback((row) => {
-    const groupId = String(row?.group_id ?? "");
-    if (!groupId || isSaving || isMutatingAction) return;
-    const linkedCardIds = allCards.filter((c) => isSameId(c?.group_id, groupId)).map((c) => String(c?.card_id ?? ""));
-    setPendingBatch((prev) => ({
-      ...prev, groupHardDeletes: (prev.groupHardDeletes || []).filter((id) => !isSameId(id, groupId)),
-      cardHardDeletes: (prev.cardHardDeletes || []).filter((id) => !linkedCardIds.some((lr) => isSameId(lr, id))),
-    }));
-    toastSuccess("Card group deletion un-staged.", "Batching");
-  }, [allCards, isMutatingAction, isSaving, setPendingBatch]);
+  }, [allCards, isMutatingAction, isSaving, orderedGroups, setAllCards, setOrderedGroups, setPendingBatch]);
 
   return {
-    openAddGroupDialog, openEditGroupDialog, openToggleGroupDialog, openDeactivateGroupDialog,
-    submitAddGroup, submitEditGroup, submitToggleGroup, submitDeactivateGroup, stageHardDeleteGroup, unstageHardDeleteGroup,
+    openAddGroupDialog, openEditGroupDialog, submitAddGroup, submitEditGroup,
+    stageDeactivateGroup, stageHardDeleteGroup,
   };
 }
 
 // ─── HOOK: useCardActions ──────────────────────────────────
 
 function useCardActions({
-  isSaving, isMutatingAction, isSelectedGroupPendingDeactivation,
-  selectedGroup, selectedApp, selectedGroupCards, pendingDeactivatedCardIds,
+  isSaving, isMutatingAction, selectedApp, allCards, pendingDeactivatedCardIds,
   dialog, cardDraft, setAllCards, setPendingBatch, setDialog, setCardDraft,
 }) {
-  const openAddCardDialog = useCallback(() => {
+  const openAddCardDialog = useCallback((groupRow) => {
     if (isSaving || isMutatingAction) return;
-    if (!selectedGroup?.group_id) { toastError("Select a card group before adding a card."); return; }
-    if (isSelectedGroupPendingDeactivation) { toastError("Selected group is staged for deactivation. Save or cancel batch before adding a card."); return; }
-    setCardDraft({ name: "", desc: "", route_path: "", icon: "" });
-    setDialog({ kind: "add-card", target: { group_id: selectedGroup.group_id, group_name: selectedGroup.group_name, app_id: selectedApp?.app_id }, nextIsActive: true });
-  }, [isMutatingAction, isSaving, isSelectedGroupPendingDeactivation, selectedApp, selectedGroup, setCardDraft, setDialog]);
+    if (!groupRow?.group_id) { toastError("Select a card group before adding a card."); return; }
+    setCardDraft({ name: "", desc: "", route_path: "", icon: "", role_ids: [] });
+    setDialog({ kind: "add-card", target: { group_id: groupRow.group_id, group_name: groupRow.group_name, app_id: selectedApp?.app_id }, nextIsActive: true });
+  }, [isMutatingAction, isSaving, selectedApp, setCardDraft, setDialog]);
 
   const openEditCardDialog = useCallback((row) => {
     if (isSaving || isMutatingAction) return;
-    setCardDraft({ name: String(row?.card_name || ""), desc: String(row?.card_desc || ""), route_path: String(row?.route_path || ""), icon: String(row?.card_icon || row?.icon || "") });
+    setCardDraft({ name: String(row?.card_name || ""), desc: String(row?.card_desc || ""), route_path: String(row?.route_path || ""), icon: String(row?.card_icon || row?.icon || ""), role_ids: [] });
     setDialog({ kind: "edit-card", target: row, nextIsActive: null });
   }, [isMutatingAction, isSaving, setCardDraft, setDialog]);
-
-  const openToggleCardDialog = useCallback((row) => {
-    if (isSaving || isMutatingAction) return;
-    const cardId = String(row?.card_id ?? "");
-    if (pendingDeactivatedCardIds.has(cardId)) {
-      setPendingBatch((prev) => ({ ...prev, cardDeactivations: (prev.cardDeactivations || []).filter((id) => !isSameId(id, cardId)) }));
-      toastSuccess("Card deactivation un-staged.", "Batching"); return;
-    }
-    setDialog({ kind: "toggle-card", target: row, nextIsActive: !Boolean(row?.is_active_bool) });
-  }, [isMutatingAction, isSaving, pendingDeactivatedCardIds, setDialog, setPendingBatch]);
-
-  const openDeactivateCardDialog = useCallback((row) => {
-    if (isSaving || isMutatingAction) return;
-    setDialog({ kind: "deactivate-card", target: row, nextIsActive: null });
-  }, [isMutatingAction, isSaving, setDialog]);
 
   const submitAddCard = useCallback(() => {
     const target = dialog?.target;
@@ -241,17 +194,20 @@ function useCardActions({
     const routePath = String(cardDraft.route_path || "").trim() || "#";
     const cardIcon = String(cardDraft.icon || "").trim() || "table-cells-large";
     const tempCardId = createTempId(TEMP_CARD_PREFIX);
+    const groupCards = allCards.filter((c) => isSameId(c?.group_id, target.group_id));
     setAllCards((prev) => [...prev, mapCardRow({
       card_id: tempCardId, group_id: target.group_id, app_id: target.app_id,
       card_name: cardName, card_desc: cardDesc, route_path: routePath, icon: cardIcon,
-      is_active: true, display_order: selectedGroupCards.length + 1,
+      is_active: true, display_order: groupCards.length + 1,
     }, prev.length)]);
     setPendingBatch((prev) => ({ ...prev, cardCreates: [...prev.cardCreates, {
       tempId: tempCardId, payload: { group_id: target.group_id, app_id: target.app_id, card_name: cardName, card_desc: cardDesc, route_path: routePath, icon: cardIcon, is_active: true },
-    }]}));
-    setDialog(EMPTY_DIALOG); setCardDraft({ name: "", desc: "", route_path: "", icon: "" });
+    }],
+      roleAccessAdds: [...(prev.roleAccessAdds || []), ...(cardDraft.role_ids || []).map((rid) => ({ card_id: String(tempCardId), role_id: String(rid) }))],
+    }));
+    setDialog(EMPTY_DIALOG); setCardDraft({ name: "", desc: "", route_path: "", icon: "", role_ids: [] });
     toastSuccess("Card staged for Save Batch.", "Batching");
-  }, [cardDraft, dialog, selectedGroupCards.length, setAllCards, setCardDraft, setDialog, setPendingBatch]);
+  }, [allCards, cardDraft, dialog, setAllCards, setCardDraft, setDialog, setPendingBatch]);
 
   const submitEditCard = useCallback(() => {
     const row = dialog?.target;
@@ -273,35 +229,30 @@ function useCardActions({
     toastSuccess("Card update staged for Save Batch.", "Batching");
   }, [cardDraft, dialog, setAllCards, setDialog, setPendingBatch]);
 
-  const submitToggleCard = useCallback(() => {
-    const row = dialog?.target; const nextIsActive = Boolean(dialog?.nextIsActive);
-    if (!row?.card_id) { toastError("Invalid card."); return; }
-    const cardId = row.card_id;
-    setAllCards((prev) => prev.map((c, i) => isSameId(c?.card_id, cardId) ? mapCardRow({ ...c, is_active: nextIsActive }, i) : c));
-    setPendingBatch((prev) => {
-      if (isTempCardId(cardId)) {
-        return { ...prev, cardCreates: prev.cardCreates.map((e) => isSameId(e?.tempId, cardId) ? { ...e, payload: { ...e.payload, is_active: nextIsActive } } : e), cardUpdates: removeObjectKey(prev.cardUpdates, cardId) };
-      }
-      return { ...prev, cardUpdates: { ...prev.cardUpdates, [String(cardId)]: mergeUpdatePatch(prev.cardUpdates?.[String(cardId)], { is_active: nextIsActive }) } };
-    });
-    setDialog(EMPTY_DIALOG);
-    toastSuccess(`Card ${nextIsActive ? "enable" : "disable"} staged for Save Batch.`, "Batching");
-  }, [dialog, setAllCards, setDialog, setPendingBatch]);
+  const stageDeactivateCard = useCallback((row) => {
+    const cardId = String(row?.card_id ?? "");
+    if (!cardId || isSaving || isMutatingAction) return;
 
-  const submitDeactivateCard = useCallback(() => {
-    const row = dialog?.target;
-    if (!row?.card_id) { toastError("Invalid card."); return; }
-    const cardId = row.card_id;
-    if (isTempCardId(cardId)) setAllCards((items) => items.filter((c) => !isSameId(c?.card_id, cardId)));
-    setPendingBatch((prev) => {
-      if (isTempCardId(cardId)) {
-        return { ...prev, cardCreates: prev.cardCreates.filter((e) => !isSameId(e?.tempId, cardId)), cardUpdates: removeObjectKey(prev.cardUpdates, cardId), cardDeactivations: (prev.cardDeactivations || []).filter((id) => !isSameId(id, cardId)) };
-      }
-      return { ...prev, cardUpdates: removeObjectKey(prev.cardUpdates, cardId), cardDeactivations: appendUniqueId(prev.cardDeactivations, cardId) };
-    });
-    setDialog(EMPTY_DIALOG);
+    if (pendingDeactivatedCardIds.has(cardId)) {
+      setPendingBatch((prev) => ({ ...prev, cardDeactivations: (prev.cardDeactivations || []).filter((id) => !isSameId(id, cardId)) }));
+      toastSuccess("Card deactivation un-staged.", "Batching"); return;
+    }
+
+    if (isTempCardId(cardId)) {
+      setAllCards((items) => items.filter((c) => !isSameId(c?.card_id, cardId)));
+      setPendingBatch((prev) => ({
+        ...prev, cardCreates: prev.cardCreates.filter((e) => !isSameId(e?.tempId, cardId)),
+        cardUpdates: removeObjectKey(prev.cardUpdates, cardId),
+      }));
+      toastSuccess("Staged card removed.", "Batching"); return;
+    }
+
+    setPendingBatch((prev) => ({
+      ...prev, cardUpdates: removeObjectKey(prev.cardUpdates, cardId),
+      cardDeactivations: appendUniqueId(prev.cardDeactivations, cardId),
+    }));
     toastSuccess("Card deactivation staged for Save Batch.", "Batching");
-  }, [dialog, setAllCards, setDialog, setPendingBatch]);
+  }, [isMutatingAction, isSaving, pendingDeactivatedCardIds, setAllCards, setPendingBatch]);
 
   const stageHardDeleteCard = useCallback((row) => {
     const cardId = String(row?.card_id ?? "");
@@ -318,16 +269,9 @@ function useCardActions({
     toastSuccess("Card deletion staged for Save Batch.", "Batching");
   }, [isMutatingAction, isSaving, setAllCards, setPendingBatch]);
 
-  const unstageHardDeleteCard = useCallback((row) => {
-    const cardId = String(row?.card_id ?? "");
-    if (!cardId || isSaving || isMutatingAction) return;
-    setPendingBatch((prev) => ({ ...prev, cardHardDeletes: (prev.cardHardDeletes || []).filter((id) => !isSameId(id, cardId)) }));
-    toastSuccess("Card deletion un-staged.", "Batching");
-  }, [isMutatingAction, isSaving, setPendingBatch]);
-
   return {
-    openAddCardDialog, openEditCardDialog, openToggleCardDialog, openDeactivateCardDialog,
-    submitAddCard, submitEditCard, submitToggleCard, submitDeactivateCard, stageHardDeleteCard, unstageHardDeleteCard,
+    openAddCardDialog, openEditCardDialog, submitAddCard, submitEditCard,
+    stageDeactivateCard, stageHardDeleteCard,
   };
 }
 
@@ -366,8 +310,11 @@ function useCardModuleSetup({ applications = [], cardGroups = [], cards = [], in
     return m;
   }
 
+  // ── State ──
   const [orderedGroups, setOrderedGroups] = useState(seedCardGroups);
   const [allCards, setAllCards] = useState(seedCards);
+  const [roleAccess, setRoleAccess] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [persistedGroupOrderSig, setPersistedGroupOrderSig] = useState(() =>
     buildOrderSignature(seedCardGroups.filter((g) => isSameId(g?.app_id, initialAppId)), "group_id"));
   const [persistedCardOrderSigs, setPersistedCardOrderSigs] = useState(() =>
@@ -377,23 +324,12 @@ function useCardModuleSetup({ applications = [], cardGroups = [], cards = [], in
   const [pendingBatch, setPendingBatch] = useState(createEmptyBatchState());
   const [dialog, setDialog] = useState(EMPTY_DIALOG);
   const [groupDraft, setGroupDraft] = useState({ name: "", desc: "", icon: "" });
-  const [cardDraft, setCardDraft] = useState({ name: "", desc: "", route_path: "", icon: "" });
-  const [editingGroupId, setEditingGroupId] = useState(null);
-  const [editingCardId, setEditingCardId] = useState(null);
+  const [cardDraft, setCardDraft] = useState({ name: "", desc: "", route_path: "", icon: "", role_ids: [] });
+  const [expandedGroupId, setExpandedGroupId] = useState(null);
+  const [expandedCardId, setExpandedCardId] = useState(null);
   const batchActiveRef = useRef(false);
 
-  useEffect(() => {
-    if (batchActiveRef.current) return;
-    setOrderedGroups(seedCardGroups); setAllCards(seedCards);
-    const resetGroups = seedCardGroups.filter((g) => isSameId(g?.app_id, initialAppId));
-    setPersistedGroupOrderSig(buildOrderSignature(resetGroups, "group_id"));
-    setPersistedCardOrderSigs(buildCardSigMap(resetGroups, seedCards));
-    setIsSaving(false); setIsMutatingAction(false);
-    setPendingBatch(createEmptyBatchState()); setDialog(EMPTY_DIALOG);
-    setGroupDraft({ name: "", desc: "", icon: "" }); setCardDraft({ name: "", desc: "", route_path: "", icon: "" });
-    setEditingGroupId(null); setEditingCardId(null);
-  }, [seedCardGroups, seedCards, initialAppId]);
-
+  // ── Load role access when app changes ──
   const selectedAppId = useMemo(() => {
     const fromQ = parseId(searchParams?.get("app"));
     if (fromQ !== null) return fromQ;
@@ -405,90 +341,185 @@ function useCardModuleSetup({ applications = [], cardGroups = [], cards = [], in
     () => safeApplications.find((a) => isSameId(a?.app_id, selectedAppId)) ?? safeApplications[0] ?? null,
     [safeApplications, selectedAppId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedApp?.app_id) return;
+    loadCardRoleAccessByApp(selectedApp.app_id).then((result) => {
+      if (cancelled) return;
+      setRoleAccess(result.roleAccess || []);
+      setRoles(result.roles || []);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedApp?.app_id]);
+
+  useEffect(() => {
+    if (batchActiveRef.current) return;
+    setOrderedGroups(seedCardGroups); setAllCards(seedCards);
+    const resetGroups = seedCardGroups.filter((g) => isSameId(g?.app_id, initialAppId));
+    setPersistedGroupOrderSig(buildOrderSignature(resetGroups, "group_id"));
+    setPersistedCardOrderSigs(buildCardSigMap(resetGroups, seedCards));
+    setIsSaving(false); setIsMutatingAction(false);
+    setPendingBatch(createEmptyBatchState()); setDialog(EMPTY_DIALOG);
+    setGroupDraft({ name: "", desc: "", icon: "" }); setCardDraft({ name: "", desc: "", route_path: "", icon: "", role_ids: [] });
+    setExpandedGroupId(null); setExpandedCardId(null);
+  }, [seedCardGroups, seedCards, initialAppId]);
+
   const appGroups = useMemo(
     () => orderedGroups.filter((g) => isSameId(g?.app_id, selectedApp?.app_id)),
     [orderedGroups, selectedApp?.app_id]);
 
-  const currentGroupOrderSig = useMemo(() => buildOrderSignature(appGroups, "group_id"), [appGroups]);
-  const hasGroupOrderChanges = persistedGroupOrderSig !== currentGroupOrderSig;
+  const excludedGroupIds = useMemo(() => new Set([
+    ...(pendingBatch.groupCreates || []).map((e) => String(e?.tempId ?? "")),
+    ...(pendingBatch.groupDeactivations || []).map((id) => String(id ?? "")),
+    ...(pendingBatch.groupHardDeletes || []).map((id) => String(id ?? "")),
+  ]), [pendingBatch.groupCreates, pendingBatch.groupDeactivations, pendingBatch.groupHardDeletes]);
 
-  const selectedGroupId = useMemo(() => {
-    const fromQ = parseId(searchParams?.get("group"));
-    if (fromQ !== null && appGroups.find((g) => isSameId(g?.group_id, fromQ))) return fromQ;
-    return appGroups[0]?.group_id ?? null;
-  }, [appGroups, searchParams]);
+  const excludedCardIds = useMemo(() => new Set([
+    ...(pendingBatch.cardCreates || []).map((e) => String(e?.tempId ?? "")),
+    ...(pendingBatch.cardDeactivations || []).map((id) => String(id ?? "")),
+    ...(pendingBatch.cardHardDeletes || []).map((id) => String(id ?? "")),
+  ]), [pendingBatch.cardCreates, pendingBatch.cardDeactivations, pendingBatch.cardHardDeletes]);
 
-  const selectedGroup = useMemo(
-    () => appGroups.find((g) => isSameId(g?.group_id, selectedGroupId)) ?? appGroups[0] ?? null,
-    [appGroups, selectedGroupId]);
-
-  const selectedGroupCards = useMemo(
-    () => allCards.filter((c) => isSameId(c?.group_id, selectedGroup?.group_id))
-      .sort((a, b) => { const d = Number(a.display_order || 0) - Number(b.display_order || 0); return d !== 0 ? d : compareText(a.card_name, b.card_name); }),
-    [allCards, selectedGroup?.group_id]);
+  const currentGroupOrderSig = useMemo(
+    () => buildOrderSignature(appGroups.filter((g) => !excludedGroupIds.has(String(g?.group_id ?? ""))), "group_id"),
+    [appGroups, excludedGroupIds]);
+  const persistedGroupOrderSigFiltered = useMemo(() => {
+    const deactivatedOrDeleted = new Set([
+      ...(pendingBatch.groupDeactivations || []).map((id) => String(id ?? "")),
+      ...(pendingBatch.groupHardDeletes || []).map((id) => String(id ?? "")),
+    ]);
+    const base = seedCardGroups.filter((g) => isSameId(g?.app_id, selectedApp?.app_id) && !deactivatedOrDeleted.has(String(g?.group_id ?? "")));
+    return buildOrderSignature(base, "group_id");
+  }, [seedCardGroups, selectedApp?.app_id, pendingBatch.groupDeactivations, pendingBatch.groupHardDeletes]);
+  const hasGroupOrderChanges = persistedGroupOrderSigFiltered !== currentGroupOrderSig;
 
   const hasCardOrderChanges = useMemo(() => {
     for (const g of appGroups) {
       const gid = String(g?.group_id ?? "");
-      const gc = allCards.filter((c) => isSameId(c?.group_id, g?.group_id))
+      if (excludedGroupIds.has(gid)) continue;
+      const gc = allCards.filter((c) => isSameId(c?.group_id, g?.group_id) && !excludedCardIds.has(String(c?.card_id ?? "")))
         .sort((a, b) => { const d = Number(a.display_order || 0) - Number(b.display_order || 0); return d !== 0 ? d : compareText(a.card_name, b.card_name); });
-      if (buildOrderSignature(gc, "card_id") !== (persistedCardOrderSigs[gid] ?? "")) return true;
+      const persistedSig = persistedCardOrderSigs[gid] ?? "";
+      const persistedFiltered = persistedSig.split("|").filter((id) => !excludedCardIds.has(id)).join("|");
+      if (buildOrderSignature(gc, "card_id") !== persistedFiltered) return true;
     }
     return false;
-  }, [allCards, appGroups, persistedCardOrderSigs]);
+  }, [allCards, appGroups, excludedCardIds, excludedGroupIds, persistedCardOrderSigs]);
 
   const pendingSummary = useMemo(() => {
-    const gA = pendingBatch.groupCreates.length, gE = Object.keys(pendingBatch.groupUpdates || {}).length;
+    const gA = pendingBatch.groupCreates.length;
+    const gE = Object.entries(pendingBatch.groupUpdates || {}).filter(([id, patch]) => {
+      const seed = seedCardGroups.find((g) => isSameId(g?.group_id, id));
+      if (!seed) return true;
+      return Object.entries(patch || {}).some(([k, v]) => String(v ?? "") !== String(seed[k] ?? ""));
+    }).length;
     const gD = pendingBatch.groupDeactivations.length, gH = (pendingBatch.groupHardDeletes || []).length;
-    const cA = pendingBatch.cardCreates.length, cE = Object.keys(pendingBatch.cardUpdates || {}).length;
+    const cA = pendingBatch.cardCreates.length;
+    const cE = Object.entries(pendingBatch.cardUpdates || {}).filter(([id, patch]) => {
+      const seed = seedCards.find((c) => isSameId(c?.card_id, id));
+      if (!seed) return true;
+      return Object.entries(patch || {}).some(([k, v]) => String(v ?? "") !== String(seed[k] ?? ""));
+    }).length;
     const cD = pendingBatch.cardDeactivations.length, cH = (pendingBatch.cardHardDeletes || []).length;
+    const rA = (pendingBatch.roleAccessAdds || []).length, rR = (pendingBatch.roleAccessRemoves || []).length;
     const oC = (hasGroupOrderChanges ? 1 : 0) + (hasCardOrderChanges ? 1 : 0);
-    return { groupAdded: gA, groupEdited: gE, groupDeactivated: gD, groupHardDeleted: gH, cardAdded: cA, cardEdited: cE, cardDeactivated: cD, cardHardDeleted: cH, rowOrderChanged: oC, total: gA + gE + gD + gH + cA + cE + cD + cH + oC };
-  }, [hasCardOrderChanges, hasGroupOrderChanges, pendingBatch]);
+    return { groupAdded: gA, groupEdited: gE, groupDeactivated: gD, groupHardDeleted: gH, cardAdded: cA, cardEdited: cE, cardDeactivated: cD, cardHardDeleted: cH, roleAdded: rA, roleRemoved: rR, rowOrderChanged: oC, total: gA + gE + gD + gH + cA + cE + cD + cH + rA + rR + oC };
+  }, [hasCardOrderChanges, hasGroupOrderChanges, pendingBatch, seedCardGroups, seedCards]);
 
   const hasPendingChanges = pendingSummary.total > 0;
   useEffect(() => { batchActiveRef.current = hasPendingChanges; }, [hasPendingChanges]);
 
   const pendingDeactivatedGroupIds = useMemo(() => new Set((pendingBatch.groupDeactivations || []).map((id) => String(id ?? ""))), [pendingBatch.groupDeactivations]);
   const pendingDeactivatedCardIds = useMemo(() => new Set((pendingBatch.cardDeactivations || []).map((id) => String(id ?? ""))), [pendingBatch.cardDeactivations]);
-  const pendingHardDeletedGroupIds = useMemo(() => new Set((pendingBatch.groupHardDeletes || []).map((id) => String(id ?? ""))), [pendingBatch.groupHardDeletes]);
-  const pendingHardDeletedCardIds = useMemo(() => new Set((pendingBatch.cardHardDeletes || []).map((id) => String(id ?? ""))), [pendingBatch.cardHardDeletes]);
-  const isSelectedGroupPendingDeactivation = useMemo(() => pendingDeactivatedGroupIds.has(String(selectedGroup?.group_id ?? "")), [pendingDeactivatedGroupIds, selectedGroup?.group_id]);
 
+  // ── Decorated rows ──
   const decoratedGroups = useMemo(() => {
     const cIds = new Set((pendingBatch.groupCreates || []).map((e) => String(e?.tempId ?? "")));
-    const uIds = new Set(Object.keys(pendingBatch.groupUpdates || {}));
+    const uIds = new Set(Object.entries(pendingBatch.groupUpdates || {}).filter(([id, patch]) => {
+      const seed = seedCardGroups.find((g) => isSameId(g?.group_id, id));
+      if (!seed) return true;
+      return Object.entries(patch || {}).some(([k, v]) => String(v ?? "") !== String(seed[k] ?? ""));
+    }).map(([id]) => id));
     const dIds = new Set((pendingBatch.groupDeactivations || []).map((e) => String(e ?? "")));
     const hIds = new Set((pendingBatch.groupHardDeletes || []).map((e) => String(e ?? "")));
     return appGroups.map((row) => {
       const id = String(row?.group_id ?? "");
       const oc = row.__originalOrder != null && Number(row.display_order) !== Number(row.__originalOrder);
-      if (hIds.has(id)) return { ...row, __batchState: "hardDeleted", __previousOrder: oc ? row.__originalOrder : null };
-      if (dIds.has(id)) return { ...row, __batchState: "deleted", __previousOrder: oc ? row.__originalOrder : null };
-      if (cIds.has(id)) return { ...row, __batchState: "created", __previousOrder: null };
-      if (uIds.has(id)) return { ...row, __batchState: "updated", __previousOrder: oc ? row.__originalOrder : null };
-      if (oc) return { ...row, __batchState: "reordered", __previousOrder: row.__originalOrder };
-      return { ...row, __batchState: "none", __previousOrder: null };
+      if (hIds.has(id)) return { ...row, __batchState: "hardDeleted" };
+      if (dIds.has(id)) return { ...row, __batchState: "deleted" };
+      if (cIds.has(id)) return { ...row, __batchState: "created" };
+      if (uIds.has(id)) return { ...row, __batchState: "updated" };
+      if (oc) return { ...row, __batchState: "reordered" };
+      return { ...row, __batchState: "none" };
     });
-  }, [appGroups, pendingBatch.groupCreates, pendingBatch.groupDeactivations, pendingBatch.groupHardDeletes, pendingBatch.groupUpdates]);
+  }, [appGroups, pendingBatch.groupCreates, pendingBatch.groupDeactivations, pendingBatch.groupHardDeletes, pendingBatch.groupUpdates, seedCardGroups]);
 
-  const decoratedSelectedGroupCards = useMemo(() => {
+  const decorateCards = useCallback((groupId) => {
+    const groupCards = allCards.filter((c) => isSameId(c?.group_id, groupId))
+      .sort((a, b) => { const d = Number(a.display_order || 0) - Number(b.display_order || 0); return d !== 0 ? d : compareText(a.card_name, b.card_name); });
     const cIds = new Set((pendingBatch.cardCreates || []).map((e) => String(e?.tempId ?? "")));
-    const uIds = new Set(Object.keys(pendingBatch.cardUpdates || {}));
+    const uIds = new Set(Object.entries(pendingBatch.cardUpdates || {}).filter(([id, patch]) => {
+      const seed = seedCards.find((c) => isSameId(c?.card_id, id));
+      if (!seed) return true;
+      return Object.entries(patch || {}).some(([k, v]) => String(v ?? "") !== String(seed[k] ?? ""));
+    }).map(([id]) => id));
     const dIds = new Set((pendingBatch.cardDeactivations || []).map((e) => String(e ?? "")));
     const hIds = new Set((pendingBatch.cardHardDeletes || []).map((e) => String(e ?? "")));
-    return selectedGroupCards.map((row) => {
+    return groupCards.map((row) => {
       const id = String(row?.card_id ?? "");
-      const oc = row.__originalOrder != null && Number(row.display_order) !== Number(row.__originalOrder);
-      if (hIds.has(id)) return { ...row, __batchState: "hardDeleted", __previousOrder: oc ? row.__originalOrder : null };
-      if (dIds.has(id)) return { ...row, __batchState: "deleted", __previousOrder: oc ? row.__originalOrder : null };
-      if (cIds.has(id)) return { ...row, __batchState: "created", __previousOrder: null };
-      if (uIds.has(id)) return { ...row, __batchState: "updated", __previousOrder: oc ? row.__originalOrder : null };
-      if (oc) return { ...row, __batchState: "reordered", __previousOrder: row.__originalOrder };
-      return { ...row, __batchState: "none", __previousOrder: null };
+      if (hIds.has(id)) return { ...row, __batchState: "hardDeleted" };
+      if (dIds.has(id)) return { ...row, __batchState: "deleted" };
+      if (cIds.has(id)) return { ...row, __batchState: "created" };
+      if (uIds.has(id)) return { ...row, __batchState: "updated" };
+      return { ...row, __batchState: "none" };
     });
-  }, [pendingBatch.cardCreates, pendingBatch.cardDeactivations, pendingBatch.cardHardDeletes, pendingBatch.cardUpdates, selectedGroupCards]);
+  }, [allCards, pendingBatch.cardCreates, pendingBatch.cardDeactivations, pendingBatch.cardHardDeletes, pendingBatch.cardUpdates, seedCards]);
 
+  // ── Role access helpers ──
+  const getCardRoleIds = useCallback((cardId) => {
+    const persistedRoles = roleAccess
+      .filter((r) => isSameId(r?.card_id, cardId) && r?.is_active)
+      .map((r) => String(r?.role_id ?? ""));
+    const addedRoles = (pendingBatch.roleAccessAdds || [])
+      .filter((e) => isSameId(e?.card_id, cardId))
+      .map((e) => String(e?.role_id ?? ""));
+    const removedRoles = new Set((pendingBatch.roleAccessRemoves || [])
+      .filter((e) => isSameId(e?.card_id, cardId))
+      .map((e) => String(e?.role_id ?? "")));
+    const combined = new Set([...persistedRoles, ...addedRoles]);
+    removedRoles.forEach((id) => combined.delete(id));
+    return [...combined];
+  }, [pendingBatch.roleAccessAdds, pendingBatch.roleAccessRemoves, roleAccess]);
+
+  const stageAddRoleAccess = useCallback((cardId, roleId) => {
+    if (!cardId || !roleId || isSaving || isMutatingAction) return;
+    setPendingBatch((prev) => {
+      const alreadyRemoved = (prev.roleAccessRemoves || []).find((e) => isSameId(e?.card_id, cardId) && isSameId(e?.role_id, roleId));
+      if (alreadyRemoved) {
+        return { ...prev, roleAccessRemoves: prev.roleAccessRemoves.filter((e) => !(isSameId(e?.card_id, cardId) && isSameId(e?.role_id, roleId))) };
+      }
+      const alreadyAdded = (prev.roleAccessAdds || []).find((e) => isSameId(e?.card_id, cardId) && isSameId(e?.role_id, roleId));
+      if (alreadyAdded) return prev;
+      return { ...prev, roleAccessAdds: [...(prev.roleAccessAdds || []), { card_id: String(cardId), role_id: String(roleId) }] };
+    });
+    toastSuccess("Role access staged.", "Batching");
+  }, [isMutatingAction, isSaving]);
+
+  const stageRemoveRoleAccess = useCallback((cardId, roleId) => {
+    if (!cardId || !roleId || isSaving || isMutatingAction) return;
+    setPendingBatch((prev) => {
+      const wasAdded = (prev.roleAccessAdds || []).find((e) => isSameId(e?.card_id, cardId) && isSameId(e?.role_id, roleId));
+      if (wasAdded) {
+        return { ...prev, roleAccessAdds: prev.roleAccessAdds.filter((e) => !(isSameId(e?.card_id, cardId) && isSameId(e?.role_id, roleId))) };
+      }
+      const alreadyRemoved = (prev.roleAccessRemoves || []).find((e) => isSameId(e?.card_id, cardId) && isSameId(e?.role_id, roleId));
+      if (alreadyRemoved) return prev;
+      return { ...prev, roleAccessRemoves: [...(prev.roleAccessRemoves || []), { card_id: String(cardId), role_id: String(roleId) }] };
+    });
+    toastSuccess("Role removal staged.", "Batching");
+  }, [isMutatingAction, isSaving]);
+
+  // ── URL & navigation ──
   const updateQueryParams = useCallback((updates) => {
     const p = new URLSearchParams(searchParams?.toString() || "");
     Object.entries(updates).forEach(([k, v]) => { if (v == null || v === "") p.delete(k); else p.set(k, String(v)); });
@@ -496,34 +527,15 @@ function useCardModuleSetup({ applications = [], cardGroups = [], cards = [], in
     router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
 
-  const handleApplicationChange = useCallback((event) => {
-    const appId = parseId(event.target.value);
+  const handleApplicationChange = useCallback((appId) => {
     const nextGroups = orderedGroups.filter((g) => isSameId(g?.app_id, appId));
     setPersistedGroupOrderSig(buildOrderSignature(nextGroups, "group_id"));
     setPersistedCardOrderSigs(buildCardSigMap(nextGroups, allCards));
-    updateQueryParams({ app: appId, group: null });
+    setExpandedGroupId(null); setExpandedCardId(null);
+    updateQueryParams({ app: appId });
   }, [allCards, orderedGroups, updateQueryParams]);
 
-  const handleGroupRowClick = useCallback((row) => updateQueryParams({ group: row?.group_id }), [updateQueryParams]);
-
-  const handleGroupReorder = useCallback((next) => {
-    if (isSaving || isMutatingAction) return;
-    const normalized = (Array.isArray(next) ? next : []).map((r, i) => ({ ...r, display_order: i + 1 }));
-    setOrderedGroups((prev) => {
-      const other = prev.filter((g) => !isSameId(g?.app_id, selectedApp?.app_id));
-      return [...other, ...normalized];
-    });
-  }, [isMutatingAction, isSaving, selectedApp?.app_id]);
-
-  const handleCardReorder = useCallback((next) => {
-    if (isSaving || isMutatingAction) return;
-    const normalized = (Array.isArray(next) ? next : []).map((r, i) => ({ ...r, display_order: i + 1 }));
-    setAllCards((prev) => {
-      const other = prev.filter((c) => !isSameId(c?.group_id, selectedGroup?.group_id));
-      return [...other, ...normalized];
-    });
-  }, [isMutatingAction, isSaving, selectedGroup?.group_id]);
-
+  // ── Batch operations ──
   const handleCancelBatch = useCallback(() => {
     if (isSaving || isMutatingAction) return;
     batchActiveRef.current = false;
@@ -531,17 +543,15 @@ function useCardModuleSetup({ applications = [], cardGroups = [], cards = [], in
     const cancelGroups = seedCardGroups.filter((g) => isSameId(g?.app_id, selectedApp?.app_id));
     setPersistedGroupOrderSig(buildOrderSignature(cancelGroups, "group_id"));
     setPersistedCardOrderSigs(buildCardSigMap(cancelGroups, seedCards));
-    setDialog(EMPTY_DIALOG); setGroupDraft({ name: "", desc: "", icon: "" }); setCardDraft({ name: "", desc: "", route_path: "", icon: "" });
-    setEditingGroupId(null); setEditingCardId(null);
-    updateQueryParams({ group: cancelGroups[0]?.group_id ?? null });
-  }, [isMutatingAction, isSaving, seedCardGroups, seedCards, selectedApp?.app_id, updateQueryParams]);
+    setDialog(EMPTY_DIALOG); setGroupDraft({ name: "", desc: "", icon: "" }); setCardDraft({ name: "", desc: "", route_path: "", icon: "", role_ids: [] });
+    setExpandedGroupId(null); setExpandedCardId(null);
+  }, [isMutatingAction, isSaving, seedCardGroups, seedCards, selectedApp?.app_id]);
 
   const handleSaveBatch = useCallback(async () => {
     if (!hasPendingChanges || isSaving || isMutatingAction) return;
     setIsSaving(true); setIsMutatingAction(true);
     try {
-      const { groupIdMap, deactivatedGroupSet, orderedPersistedGroupIds } =
-        await executeBatchSave(pendingBatch, appGroups, allCards, persistedCardOrderSigs);
+      await executeBatchSave(pendingBatch, appGroups, allCards, persistedCardOrderSigs);
       setPersistedGroupOrderSig(currentGroupOrderSig);
       const nextSigMap = {};
       for (const g of appGroups) {
@@ -552,245 +562,290 @@ function useCardModuleSetup({ applications = [], cardGroups = [], cards = [], in
       }
       setPersistedCardOrderSigs(nextSigMap); setPendingBatch(createEmptyBatchState());
       batchActiveRef.current = false;
-      const selKey = String(selectedGroup?.group_id ?? "");
-      const selResolved = groupIdMap.get(selKey) ?? selectedGroup?.group_id ?? null;
-      const nextSelGid = selResolved && !deactivatedGroupSet.has(String(selResolved)) ? selResolved : (orderedPersistedGroupIds[0] ?? null);
-      updateQueryParams({ group: nextSelGid });
       router.refresh();
       toastSuccess(`Saved ${pendingSummary.total} batched change(s).`, "Save Batch");
     } catch (error) {
       toastError(error?.message || "Failed to save batched changes.");
-    } finally { setIsMutatingAction(false); setIsSaving(false); setEditingGroupId(null); setEditingCardId(null); }
+    } finally { setIsMutatingAction(false); setIsSaving(false); }
   }, [allCards, appGroups, currentGroupOrderSig, hasPendingChanges, isMutatingAction, isSaving,
-    pendingBatch, pendingSummary.total, persistedCardOrderSigs, router, selectedGroup?.group_id, updateQueryParams]);
+    pendingBatch, pendingSummary.total, persistedCardOrderSigs, router]);
 
   const closeDialog = useCallback(() => { if (!isMutatingAction) setDialog(EMPTY_DIALOG); }, [isMutatingAction]);
 
   const groupActions = useGroupActions({
     isSaving, isMutatingAction, selectedApp, appGroups, allCards, orderedGroups,
-    selectedGroup, dialog, groupDraft, pendingDeactivatedGroupIds,
-    setOrderedGroups, setAllCards, setPendingBatch, setDialog, setGroupDraft, updateQueryParams,
+    pendingDeactivatedGroupIds, dialog, groupDraft,
+    setOrderedGroups, setAllCards, setPendingBatch, setDialog, setGroupDraft,
   });
 
   const cardActions = useCardActions({
-    isSaving, isMutatingAction, isSelectedGroupPendingDeactivation,
-    selectedGroup, selectedApp, selectedGroupCards, pendingDeactivatedCardIds,
+    isSaving, isMutatingAction, selectedApp, allCards, pendingDeactivatedCardIds,
     dialog, cardDraft, setAllCards, setPendingBatch, setDialog, setCardDraft,
   });
 
-  const startEditingGroup = useCallback((row) => { if (isSaving || isMutatingAction) return; const id = String(row?.group_id ?? ""); setEditingGroupId((prev) => prev === id ? null : id); }, [isMutatingAction, isSaving]);
-  const stopEditingGroup = useCallback(() => { setEditingGroupId(null); }, []);
-  const startEditingCard = useCallback((row) => { if (isSaving || isMutatingAction) return; const id = String(row?.card_id ?? ""); setEditingCardId((prev) => prev === id ? null : id); }, [isMutatingAction, isSaving]);
-  const stopEditingCard = useCallback(() => { setEditingCardId(null); }, []);
-
-  const handleInlineEditGroup = useCallback((row, key, value) => {
-    const groupId = row?.group_id;
-    if (!groupId || isSaving || isMutatingAction) return;
-    setOrderedGroups((prev) => prev.map((g, i) => isSameId(g?.group_id, groupId) ? mapGroupRow({ ...g, [key]: value || null }, i) : g));
-    setPendingBatch((prev) => {
-      if (isTempGroupId(groupId)) return { ...prev, groupCreates: prev.groupCreates.map((e) => isSameId(e?.tempId, groupId) ? { ...e, payload: { ...e.payload, [key]: value || null } } : e) };
-      return { ...prev, groupUpdates: { ...prev.groupUpdates, [String(groupId)]: mergeUpdatePatch(prev.groupUpdates?.[String(groupId)], { [key]: value || null }) } };
+  const handleReorderGroups = useCallback((nextRows) => {
+    if (isSaving || isMutatingAction) return;
+    const appId = selectedApp?.app_id;
+    setOrderedGroups((prev) => {
+      const others = prev.filter((g) => !isSameId(g?.app_id, appId));
+      const reordered = (Array.isArray(nextRows) ? nextRows : []).map((g, i) => ({ ...g, display_order: i + 1 }));
+      return [...others, ...reordered];
     });
-  }, [isMutatingAction, isSaving]);
+  }, [isMutatingAction, isSaving, selectedApp?.app_id]);
 
-  const handleInlineEditCard = useCallback((row, key, value) => {
-    const cardId = row?.card_id;
-    if (!cardId || isSaving || isMutatingAction) return;
-    setAllCards((prev) => prev.map((c, i) => isSameId(c?.card_id, cardId) ? mapCardRow({ ...c, [key]: value || null }, i) : c));
-    setPendingBatch((prev) => {
-      if (isTempCardId(cardId)) return { ...prev, cardCreates: prev.cardCreates.map((e) => isSameId(e?.tempId, cardId) ? { ...e, payload: { ...e.payload, [key]: value || null } } : e) };
-      return { ...prev, cardUpdates: { ...prev.cardUpdates, [String(cardId)]: mergeUpdatePatch(prev.cardUpdates?.[String(cardId)], { [key]: value || null }) } };
+  const handleReorderCards = useCallback((nextRows, groupId) => {
+    if (isSaving || isMutatingAction) return;
+    setAllCards((prev) => {
+      const others = prev.filter((c) => !isSameId(c?.group_id, groupId));
+      const reordered = (Array.isArray(nextRows) ? nextRows : []).map((c, i) => ({ ...c, display_order: i + 1 }));
+      return [...others, ...reordered];
     });
   }, [isMutatingAction, isSaving]);
 
   return {
-    safeApplications, decoratedGroups, decoratedSelectedGroupCards,
+    safeApplications, decoratedGroups, decorateCards,
     dialog, groupDraft, cardDraft, isSaving, isMutatingAction,
     pendingSummary, hasPendingChanges,
     pendingDeactivatedGroupIds, pendingDeactivatedCardIds,
-    pendingHardDeletedGroupIds, pendingHardDeletedCardIds,
-    selectedApp, selectedGroup, isSelectedGroupPendingDeactivation,
+    selectedApp, expandedGroupId, setExpandedGroupId, expandedCardId, setExpandedCardId,
     setDialog, setGroupDraft, setCardDraft,
-    handleApplicationChange, handleGroupRowClick,
-    handleGroupReorder, handleCardReorder, handleCancelBatch, handleSaveBatch,
-    closeDialog, handleInlineEditGroup, handleInlineEditCard,
-    editingGroupId, startEditingGroup, stopEditingGroup,
-    editingCardId, startEditingCard, stopEditingCard,
+    handleApplicationChange, handleCancelBatch, handleSaveBatch, closeDialog,
+    handleReorderGroups, handleReorderCards,
+    roles, getCardRoleIds, stageAddRoleAccess, stageRemoveRoleAccess,
     ...groupActions, ...cardActions,
   };
 }
 
 // ─── SUB-COMPONENTS ────────────────────────────────────────
 
+// ── Application Side Nav ──
 
-function batchMarker(bs) {
-  const map = {
-    hardDeleted: { t: "Deleted", c: "psb-batch-marker psb-batch-marker-deleted" },
-    deleted: { t: "Deactivated", c: "psb-batch-marker psb-batch-marker-deleted" },
-    created: { t: "New", c: "psb-batch-marker psb-batch-marker-new" },
-    updated: { t: "Edited", c: "psb-batch-marker psb-batch-marker-edited" },
-    reordered: { t: "Reordered", c: "psb-batch-marker psb-batch-marker-reordered" },
-  };
-  return map[bs] || { t: "", c: "" };
-}
-
-function CardModuleHeader({ safeApplications, selectedApp, hasPendingChanges, pendingSummary, isSaving, isMutatingAction, isSelectedGroupPendingDeactivation, selectedGroup, handleSaveBatch, handleCancelBatch, handleApplicationChange, openAddGroupDialog, openAddCardDialog }) {
+function AppSideNav({ safeApplications, selectedApp, isSaving, isMutatingAction, handleApplicationChange }) {
   return (
-    <>
-      <div className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
-        <div>
-          <h1 className="h3 mb-1">Card Module Setup</h1>
-          <p className="text-muted mb-0">Manage card groups and cards for each application.</p>
-        </div>
-        <div className="d-flex flex-wrap align-items-center justify-content-end gap-2">
-          <span className={`small ${hasPendingChanges ? "text-warning-emphasis fw-semibold" : "text-muted"}`}>
-            {isMutatingAction || isSaving ? "Saving batch..." : hasPendingChanges ? `${pendingSummary.total} staged change(s)` : "No changes"}
-          </span>
-          {hasPendingChanges ? (
-            <>
-              {pendingSummary.groupAdded + pendingSummary.cardAdded > 0 ? <span className="psb-batch-chip psb-batch-chip-added">+{pendingSummary.groupAdded + pendingSummary.cardAdded} Added</span> : null}
-              {pendingSummary.groupEdited + pendingSummary.cardEdited > 0 ? <span className="psb-batch-chip psb-batch-chip-edited">~{pendingSummary.groupEdited + pendingSummary.cardEdited} Edited</span> : null}
-              {pendingSummary.groupDeactivated + pendingSummary.cardDeactivated > 0 ? <span className="psb-batch-chip psb-batch-chip-deleted">-{pendingSummary.groupDeactivated + pendingSummary.cardDeactivated} Deactivated</span> : null}
-              {pendingSummary.rowOrderChanged > 0 ? <span className="psb-batch-chip psb-batch-chip-order">Reordered</span> : null}
-            </>
-          ) : null}
-          <Button type="button" size="sm" variant="primary" loading={isSaving} disabled={!hasPendingChanges || isSaving || isMutatingAction} onClick={handleSaveBatch}>Save Batch</Button>
-          <Button type="button" size="sm" variant="ghost" disabled={!hasPendingChanges || isSaving || isMutatingAction} onClick={handleCancelBatch}>Cancel Batch</Button>
-          <Button type="button" size="sm" variant="success" disabled={isSaving || isMutatingAction || !selectedApp?.app_id} onClick={openAddGroupDialog}>Add Group</Button>
-          <Button type="button" size="sm" variant="success" disabled={isSaving || isMutatingAction || !selectedGroup?.group_id || isSelectedGroupPendingDeactivation} onClick={openAddCardDialog}>Add Card</Button>
-        </div>
-      </div>
-      <div className="mb-3">
-        <label className="form-label mb-1 fw-semibold small">Application</label>
-        <select className="form-select form-select-sm" style={{ maxWidth: 340 }} value={String(selectedApp?.app_id ?? "")} onChange={handleApplicationChange} disabled={isSaving || isMutatingAction}>
-          {safeApplications.length === 0 ? <option value="">No applications available</option> : null}
-          {safeApplications.map((app) => (
-            <option key={app.app_id} value={String(app.app_id)}>{app.app_name || app.name || `App ${app.app_id}`}</option>
-          ))}
-        </select>
-      </div>
-    </>
-  );
-}
-
-function GroupTable({ decoratedGroups, selectedGroup, isSaving, isMutatingAction, pendingDeactivatedGroupIds, handleGroupRowClick, handleGroupReorder, editingGroupId, onStartEditing, onStopEditing, onInlineEdit, openToggleGroupDialog, openDeactivateGroupDialog, stageHardDeleteGroup, onUndoBatchAction }) {
-  const columns = useMemo(() => [
-    { key: "display_order", label: "Order", width: "10%", sortable: true, align: "center", render: (row) => {
-      const prev = row?.__previousOrder;
-      return (<span>{row?.display_order ?? "--"}{prev != null ? <> <span className="psb-batch-marker psb-batch-marker-edited">was {prev}</span></> : null}</span>);
-    }},
-    { key: "group_name", label: "Group Name", width: "35%", sortable: true, render: (row) => {
-      const m = batchMarker(row?.__batchState || ""); const isEditing = String(row?.group_id ?? "") === String(editingGroupId ?? ""); const editDisabled = !isEditing || isSaving || isMutatingAction; const isSelected = isSameId(row?.group_id, selectedGroup?.group_id);
-      return (<span className={isSelected ? "fw-semibold text-primary" : ""}><InlineEditCell value={row?.group_name || ""} onCommit={(val) => onInlineEdit?.(row, "group_name", val)} onCancel={onStopEditing} disabled={editDisabled} />{m.t ? <span className={m.c}>{m.t}</span> : null}</span>);
-    }},
-    { key: "group_desc", label: "Description", width: "28%", sortable: true, render: (row) => {
-      const isEditing = String(row?.group_id ?? "") === String(editingGroupId ?? ""); const editDisabled = !isEditing || isSaving || isMutatingAction;
-      return <InlineEditCell value={row?.group_desc || ""} onCommit={(val) => onInlineEdit?.(row, "group_desc", val)} onCancel={onStopEditing} disabled={editDisabled} />;
-    }},
-    { key: "group_icon", label: "Icon", width: "12%", sortable: false, align: "center", defaultVisible: false, render: (row) => {
-      const isEditing = String(row?.group_id ?? "") === String(editingGroupId ?? ""); const editDisabled = !isEditing || isSaving || isMutatingAction;
-      return <InlineEditCell value={row?.group_icon || row?.icon || ""} onCommit={(val) => onInlineEdit?.(row, "icon", val)} onCancel={onStopEditing} disabled={editDisabled} placeholder="layer-group" />;
-    }},
-    { key: "is_active_bool", label: "Active", width: "10%", sortable: true, align: "center", render: (row) => <StatusBadge status={row?.is_active_bool ? "active" : "inactive"} /> },
-  ], [editingGroupId, isMutatingAction, isSaving, onInlineEdit, onStopEditing, selectedGroup?.group_id]);
-
-  const actions = useMemo(() => [
-    { key: "edit-group", label: "Edit", type: "secondary", icon: "pen", visible: (r) => String(r?.group_id ?? "") !== String(editingGroupId ?? ""), disabled: () => isSaving || isMutatingAction, onClick: (r) => onStartEditing(r) },
-    { key: "cancel-edit-group", label: "Cancel", type: "secondary", icon: "xmark", visible: (r) => String(r?.group_id ?? "") === String(editingGroupId ?? ""), onClick: () => onStopEditing() },
-    { key: "restore-group", label: "Restore", type: "secondary", icon: "rotate-left", visible: (r) => (!Boolean(r?.is_active_bool) || pendingDeactivatedGroupIds.has(String(r?.group_id ?? ""))) && String(r?.group_id ?? "") !== String(editingGroupId ?? ""), disabled: () => isSaving || isMutatingAction, onClick: (r) => openToggleGroupDialog(r) },
-    { key: "deactivate-group", label: "Deactivate", type: "secondary", icon: "ban", visible: (r) => Boolean(r?.is_active_bool) && !pendingDeactivatedGroupIds.has(String(r?.group_id ?? "")) && String(r?.group_id ?? "") !== String(editingGroupId ?? ""), disabled: () => isSaving || isMutatingAction, onClick: (r) => openDeactivateGroupDialog(r) },
-    { key: "delete-group", label: "Delete", type: "danger", icon: "trash", visible: (r) => String(r?.group_id ?? "") !== String(editingGroupId ?? ""), confirm: true, confirmMessage: (r) => `Permanently delete ${r?.group_name || "this group"}? This action cannot be undone.`, disabled: () => isSaving || isMutatingAction, onClick: (r) => stageHardDeleteGroup(r) },
-  ], [editingGroupId, isMutatingAction, isSaving, onStartEditing, onStopEditing, openDeactivateGroupDialog, openToggleGroupDialog, pendingDeactivatedGroupIds, stageHardDeleteGroup]);
-
-  return (
-    <Card title="Card Groups" subtitle="Drag the grip icon in Actions to reorder groups.">
-      <TableZ columns={columns} data={decoratedGroups} rowIdKey="group_id" selectedRowId={selectedGroup?.group_id ?? null} onRowClick={handleGroupRowClick} actions={actions} draggable={!isSaving && !isMutatingAction} onReorder={handleGroupReorder} emptyMessage="No card groups found for this application." onUndoBatchAction={onUndoBatchAction} />
-    </Card>
-  );
-}
-
-function CardPanel({ selectedGroup, decoratedSelectedGroupCards, isSaving, isMutatingAction, pendingDeactivatedCardIds, handleCardReorder, editingCardId, onStartEditing, onStopEditing, onInlineEdit, openToggleCardDialog, openDeactivateCardDialog, stageHardDeleteCard, onUndoBatchAction }) {
-  const columns = useMemo(() => [
-    { key: "display_order", label: "Order", width: "8%", sortable: true, align: "center", render: (row) => {
-      const prev = row?.__previousOrder;
-      return (<span>{row?.display_order ?? "--"}{prev != null ? <> <span className="psb-batch-marker psb-batch-marker-edited">was {prev}</span></> : null}</span>);
-    }},
-    { key: "card_name", label: "Card Name", width: "25%", sortable: true, render: (row) => {
-      const m = batchMarker(row?.__batchState || ""); const isEditing = String(row?.card_id ?? "") === String(editingCardId ?? ""); const editDisabled = !isEditing || isSaving || isMutatingAction;
-      return (<span><InlineEditCell value={row?.card_name || ""} onCommit={(val) => onInlineEdit?.(row, "card_name", val)} onCancel={onStopEditing} disabled={editDisabled} />{m.t ? <span className={m.c}>{m.t}</span> : null}</span>);
-    }},
-    { key: "card_desc", label: "Description", width: "20%", sortable: true, defaultVisible: false, render: (row) => {
-      const isEditing = String(row?.card_id ?? "") === String(editingCardId ?? ""); const editDisabled = !isEditing || isSaving || isMutatingAction;
-      return <InlineEditCell value={row?.card_desc || ""} onCommit={(val) => onInlineEdit?.(row, "card_desc", val)} onCancel={onStopEditing} disabled={editDisabled} />;
-    }},
-    { key: "route_path", label: "Route", width: "25%", sortable: true, render: (row) => {
-      const isEditing = String(row?.card_id ?? "") === String(editingCardId ?? ""); const editDisabled = !isEditing || isSaving || isMutatingAction;
-      return <InlineEditCell value={row?.route_path || ""} onCommit={(val) => onInlineEdit?.(row, "route_path", val)} onCancel={onStopEditing} disabled={editDisabled} placeholder="#" />;
-    }},
-    { key: "card_icon", label: "Icon", width: "10%", sortable: false, align: "center", defaultVisible: false, render: (row) => {
-      const isEditing = String(row?.card_id ?? "") === String(editingCardId ?? ""); const editDisabled = !isEditing || isSaving || isMutatingAction;
-      return <InlineEditCell value={row?.card_icon || row?.icon || ""} onCommit={(val) => onInlineEdit?.(row, "icon", val)} onCancel={onStopEditing} disabled={editDisabled} placeholder="table-cells-large" />;
-    }},
-    { key: "is_active_bool", label: "Active", width: "12%", sortable: true, align: "center", render: (row) => <StatusBadge status={row?.is_active_bool ? "active" : "inactive"} /> },
-  ], [editingCardId, isMutatingAction, isSaving, onInlineEdit, onStopEditing]);
-
-  const actions = useMemo(() => [
-    { key: "edit-card", label: "Edit", type: "secondary", icon: "pen", visible: (r) => String(r?.card_id ?? "") !== String(editingCardId ?? ""), disabled: () => isSaving || isMutatingAction, onClick: (r) => onStartEditing(r) },
-    { key: "cancel-edit-card", label: "Cancel", type: "secondary", icon: "xmark", visible: (r) => String(r?.card_id ?? "") === String(editingCardId ?? ""), onClick: () => onStopEditing() },
-    { key: "restore-card", label: "Restore", type: "secondary", icon: "rotate-left", visible: (r) => (!Boolean(r?.is_active_bool) || pendingDeactivatedCardIds.has(String(r?.card_id ?? ""))) && String(r?.card_id ?? "") !== String(editingCardId ?? ""), disabled: () => isSaving || isMutatingAction, onClick: (r) => openToggleCardDialog(r) },
-    { key: "deactivate-card", label: "Deactivate", type: "secondary", icon: "ban", visible: (r) => Boolean(r?.is_active_bool) && !pendingDeactivatedCardIds.has(String(r?.card_id ?? "")) && String(r?.card_id ?? "") !== String(editingCardId ?? ""), disabled: () => isSaving || isMutatingAction, onClick: (r) => openDeactivateCardDialog(r) },
-    { key: "delete-card", label: "Delete", type: "danger", icon: "trash", visible: (r) => String(r?.card_id ?? "") !== String(editingCardId ?? ""), confirm: true, confirmMessage: (r) => `Permanently delete ${r?.card_name || "this card"}? This action cannot be undone.`, disabled: () => isSaving || isMutatingAction, onClick: (r) => stageHardDeleteCard(r) },
-  ], [editingCardId, isMutatingAction, isSaving, onStartEditing, onStopEditing, openDeactivateCardDialog, openToggleCardDialog, pendingDeactivatedCardIds, stageHardDeleteCard]);
-
-  return (
-    <Card title={selectedGroup ? `Cards for: ${selectedGroup.group_name}` : "Cards"} subtitle={selectedGroup ? "Drag rows to reorder cards within the group" : "Click a card group row to view its cards."}>
-      {selectedGroup ? (
-        <TableZ columns={columns} data={decoratedSelectedGroupCards} rowIdKey="card_id" actions={actions} emptyMessage="No cards assigned to this group." draggable={!isSaving && !isMutatingAction} onReorder={handleCardReorder} onUndoBatchAction={onUndoBatchAction} />
+    <aside className="setup-side-nav" aria-label="Application list">
+      <p className="setup-side-nav-label">APPLICATIONS</p>
+      {safeApplications.length === 0 ? (
+        <div className="text-muted small p-2">No applications available.</div>
       ) : (
-        <div className="notice-banner notice-banner-info mb-0">Click a card group row to view its cards.</div>
+        <div className="setup-side-nav-list">
+          {safeApplications.map((app) => {
+            const isActive = isSameId(app?.app_id, selectedApp?.app_id);
+            return (
+              <button key={app.app_id} type="button"
+                className={`setup-side-nav-item${isActive ? " is-active" : ""}`}
+                disabled={isSaving || isMutatingAction}
+                onClick={() => handleApplicationChange(app.app_id)}>
+                <span className="setup-side-nav-item-main">
+                  <span className="setup-side-nav-item-title">{app?.app_name || app?.name || "--"}</span>
+                  <span className="setup-side-nav-item-meta">Order {app?.display_order ?? app?.app_order ?? "--"} – Active application</span>
+                </span>
+                <span className="setup-side-nav-item-end">
+                  <i className="fa-solid fa-chevron-right fa-xs" aria-hidden="true" />
+                </span>
+              </button>
+            );
+          })}
+        </div>
       )}
-    </Card>
+    </aside>
   );
 }
 
-function CardModuleDialog({ dialog, groupDraft, cardDraft, isMutatingAction, setGroupDraft, setCardDraft, closeDialog, submitAddGroup, submitEditGroup, submitToggleGroup, submitDeactivateGroup, submitAddCard, submitEditCard, submitToggleCard, submitDeactivateCard }) {
+// ── Content Pane (groups TableZ with renderDetail → cards TableZ) ──
+
+function ContentPane({ h }) {
+  const { selectedApp, decoratedGroups, decorateCards, expandedGroupId, setExpandedGroupId,
+    isSaving, isMutatingAction, hasPendingChanges, pendingSummary, pendingDeactivatedGroupIds, pendingDeactivatedCardIds,
+    roles, getCardRoleIds, handleSaveBatch, handleCancelBatch,
+    handleReorderGroups, handleReorderCards,
+    openAddGroupDialog, openEditGroupDialog, stageHardDeleteGroup,
+    openAddCardDialog, openEditCardDialog, stageHardDeleteCard } = h;
+
+  // ── Group columns ──
+  const groupColumns = useMemo(() => [
+    { key: "group_name", label: "Group Name", sortable: true, render: (row) => {
+      const m = batchMarker(row?.__batchState || "");
+      return <span><strong>{row?.group_name || "--"}</strong>{m.t ? <> <span className={m.c}>{m.t}</span></> : null}{row?.group_desc ? <span className="d-block text-muted" style={{ fontSize: "0.75rem" }}>{row.group_desc}</span> : null}</span>;
+    }},
+    { key: "is_active_bool", label: "Active", width: 90, sortable: true, align: "center", render: (row) => <StatusBadge status={row?.is_active_bool ? "active" : "inactive"} /> },
+  ], []);
+
+  const groupTableActions = useMemo(() => [
+    { key: "edit-group", label: "Edit", icon: "pen", type: "secondary", disabled: () => isSaving || isMutatingAction, onClick: (row) => openEditGroupDialog(row) },
+    { key: "add-card", label: "+ Add Card", icon: "plus", type: "success", disabled: () => isSaving || isMutatingAction, onClick: (row) => openAddCardDialog(row) },
+    { key: "delete-group", label: "Delete", icon: "trash", type: "danger", disabled: () => isSaving || isMutatingAction, onClick: (row) => stageHardDeleteGroup(row) },
+  ], [isMutatingAction, isSaving, openAddCardDialog, openEditGroupDialog, stageHardDeleteGroup]);
+
+  const handleGroupRowClick = useCallback((row) => {
+    const groupId = String(row?.group_id ?? "");
+    setExpandedGroupId((prev) => prev === groupId ? null : groupId);
+  }, [setExpandedGroupId]);
+
+  // ── Card columns (for nested detail) ──
+  const cardColumns = useMemo(() => [
+    { key: "card_name", label: "Card Name", sortable: true, render: (row) => {
+      const m = batchMarker(row?.__batchState || "");
+      return <span><strong className="small">{row?.card_name || "--"}</strong>{row?.card_desc ? <span className="d-block text-muted" style={{ fontSize: "0.72rem" }}>{row.card_desc}</span> : null}{m.t ? <span className={m.c}>{m.t}</span> : null}</span>;
+    }},
+    { key: "route_path", label: "Route Path", sortable: true },
+    { key: "roles_display", label: "Roles", render: (row) => {
+      const cardId = String(row?.card_id ?? "");
+      const assignedRoleIds = getCardRoleIds(cardId);
+      const names = assignedRoleIds.map((rid) => {
+        const role = roles.find((r) => isSameId(r?.role_id, rid));
+        return role?.role_name || rid;
+      });
+      return names.length > 0 ? <span className="small">{names.join(", ")}</span> : <span className="text-muted small">None</span>;
+    }},
+    { key: "is_active_bool", label: "Active", width: 80, sortable: true, align: "center", render: (row) => <StatusBadge status={row?.is_active_bool ? "active" : "inactive"} /> },
+  ], [getCardRoleIds, roles]);
+
+  const cardTableActions = useMemo(() => [
+    { key: "edit-card", label: "Edit", icon: "pen", type: "secondary", disabled: () => isSaving || isMutatingAction, onClick: (row) => openEditCardDialog(row) },
+    { key: "delete-card", label: "Delete", icon: "trash", type: "danger", disabled: () => isSaving || isMutatingAction, onClick: (row) => stageHardDeleteCard(row) },
+  ], [isMutatingAction, isSaving, openEditCardDialog, stageHardDeleteCard]);
+
+  // ── renderDetail for group rows ──
+  const renderGroupDetail = useCallback((group) => {
+    const cards = decorateCards(group?.group_id);
+    const groupId = group?.group_id;
+    return (
+      <TableZ columns={cardColumns} data={cards} rowIdKey="card_id" actions={cardTableActions}
+        draggable={!isSaving && !isMutatingAction}
+        onReorder={(nextRows) => handleReorderCards(nextRows, groupId)}
+        hideSearch hideFooter emptyMessage="No cards in this group." />
+    );
+  }, [cardColumns, cardTableActions, decorateCards, handleReorderCards, isMutatingAction, isSaving]);
+
+  if (!selectedApp?.app_id) {
+    return <div className="text-muted p-4">Select an application to manage cards and card groups.</div>;
+  }
+
+  return (
+    <div className="setup-content-pane">
+      <section className="setup-editor-card mb-3">
+        <div className="d-flex align-items-start justify-content-between">
+          <div>
+            <h3 className="h5 mb-0">{selectedApp?.app_name || "Application"}</h3>
+            <p className="text-muted small mb-0">Configure card groups, cards, routes, and role assignments.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-3">
+        <div className="d-flex align-items-center justify-content-between mb-2">
+          <div>
+            <h4 className="h6 mb-0">Card Groups</h4>
+            <p className="text-muted small mb-0">Manage hierarchy for this application only.</p>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <span className={`small ${hasPendingChanges ? "text-warning-emphasis fw-semibold" : "text-muted"}`}>
+              {isSaving ? "Saving..." : hasPendingChanges ? `${pendingSummary.total} change(s)` : "No changes"}
+            </span>
+            <Button type="button" size="sm" variant="primary" loading={isSaving} disabled={!hasPendingChanges || isSaving || isMutatingAction} onClick={handleSaveBatch}>Save Batch</Button>
+            <Button type="button" size="sm" variant="ghost" disabled={!hasPendingChanges || isSaving || isMutatingAction} onClick={handleCancelBatch}>Cancel Batch</Button>
+            <Button type="button" size="sm" variant="success" disabled={isSaving || isMutatingAction} onClick={openAddGroupDialog}>+ Add Group</Button>
+          </div>
+        </div>
+
+        <TableZ columns={groupColumns} data={decoratedGroups} rowIdKey="group_id" actions={groupTableActions}
+          selectedRowId={expandedGroupId} onRowClick={handleGroupRowClick}
+          renderDetail={renderGroupDetail}
+          draggable={!isSaving && !isMutatingAction}
+          onReorder={handleReorderGroups}
+          hideSearch hideFooter
+          emptyMessage="No card groups for this application." />
+      </section>
+    </div>
+  );
+}
+
+// ── Dialog ──
+
+function CardModuleDialog({ dialog, groupDraft, cardDraft, roles, getCardRoleIds, isMutatingAction, setGroupDraft, setCardDraft, closeDialog, submitAddGroup, submitEditGroup, submitAddCard, submitEditCard, stageAddRoleAccess, stageRemoveRoleAccess }) {
   const kind = dialog?.kind;
   const dialogTitle = useMemo(() => {
-    const titles = { "add-group": "Add Card Group", "edit-group": "Edit Card Group", "toggle-group": `${dialog?.nextIsActive ? "Enable" : "Disable"} Card Group`, "deactivate-group": "Deactivate Card Group", "add-card": "Add Card", "edit-card": "Edit Card", "toggle-card": `${dialog?.nextIsActive ? "Enable" : "Disable"} Card`, "deactivate-card": "Deactivate Card" };
+    const titles = { "add-group": "Add Card Group", "edit-group": "Edit Card Group", "add-card": "Add Card", "edit-card": "Edit Card" };
     return titles[kind] || "";
-  }, [kind, dialog?.nextIsActive]);
+  }, [kind]);
 
   if (!kind) return null;
   const isBusy = isMutatingAction;
-  const submitMap = { "add-group": submitAddGroup, "edit-group": submitEditGroup, "toggle-group": submitToggleGroup, "deactivate-group": submitDeactivateGroup, "add-card": submitAddCard, "edit-card": submitEditCard, "toggle-card": submitToggleCard, "deactivate-card": submitDeactivateCard };
-  const fc = { "add-group": { label: "Add Group", variant: "success" }, "edit-group": { label: "Save", variant: "primary" }, "add-card": { label: "Add Card", variant: "success" }, "edit-card": { label: "Save", variant: "primary" }, "toggle-group": { label: dialog?.nextIsActive ? "Enable" : "Disable", variant: "secondary" }, "toggle-card": { label: dialog?.nextIsActive ? "Enable" : "Disable", variant: "secondary" }, "deactivate-group": { label: "Deactivate Group", variant: "warning" }, "deactivate-card": { label: "Deactivate Card", variant: "warning" } }[kind] || { label: "OK", variant: "primary" };
+  const submitMap = { "add-group": submitAddGroup, "edit-group": submitEditGroup, "add-card": submitAddCard, "edit-card": submitEditCard };
+  const fc = { "add-group": { label: "Stage Group", variant: "success" }, "edit-group": { label: "Save", variant: "primary" }, "add-card": { label: "Stage Card", variant: "success" }, "edit-card": { label: "Save", variant: "primary" } }[kind] || { label: "OK", variant: "primary" };
   const footer = (<><Button type="button" variant="ghost" onClick={closeDialog} disabled={isBusy}>Cancel</Button><Button type="button" variant={fc.variant} onClick={submitMap[kind]} loading={isBusy}>{fc.label}</Button></>);
   const isGroupForm = kind === "add-group" || kind === "edit-group";
   const isCardForm = kind === "add-card" || kind === "edit-card";
 
   return (
-    <Modal show onHide={closeDialog} title={dialogTitle} footer={footer}>
+    <Modal show onHide={closeDialog} title={dialogTitle} footer={footer} size={isCardForm ? "lg" : undefined}>
       {isGroupForm ? (
         <div className="d-flex flex-column gap-3">
           <div><label className="form-label mb-1">Group Name</label><Input value={groupDraft.name} onChange={(e) => setGroupDraft((p) => ({ ...p, name: e.target.value }))} placeholder="Enter group name" autoFocus /></div>
-          <div><label className="form-label mb-1">Description</label><Input as="textarea" rows={3} value={groupDraft.desc} onChange={(e) => setGroupDraft((p) => ({ ...p, desc: e.target.value }))} placeholder="Enter group description" /></div>
-          <div><label className="form-label mb-1">Icon</label><Input value={groupDraft.icon} onChange={(e) => setGroupDraft((p) => ({ ...p, icon: e.target.value }))} placeholder="e.g. layer-group" /></div>
+          <div><label className="form-label mb-1">Description</label><Input as="textarea" rows={2} value={groupDraft.desc} onChange={(e) => setGroupDraft((p) => ({ ...p, desc: e.target.value }))} placeholder="Enter group description" /></div>
         </div>
       ) : null}
       {isCardForm ? (
-        <div className="d-flex flex-column gap-3">
-          {kind === "add-card" ? <div className="small text-muted">Creating card for <strong>{dialog?.target?.group_name || "selected group"}</strong></div> : null}
-          <div><label className="form-label mb-1">Card Name</label><Input value={cardDraft.name} onChange={(e) => setCardDraft((p) => ({ ...p, name: e.target.value }))} placeholder="Enter card name" autoFocus /></div>
-          <div><label className="form-label mb-1">Description</label><Input as="textarea" rows={3} value={cardDraft.desc} onChange={(e) => setCardDraft((p) => ({ ...p, desc: e.target.value }))} placeholder="Enter card description" /></div>
-          <div><label className="form-label mb-1">Route Path</label><Input value={cardDraft.route_path} onChange={(e) => setCardDraft((p) => ({ ...p, route_path: e.target.value }))} placeholder="e.g. /my-module" /></div>
-          <div><label className="form-label mb-1">Icon</label><Input value={cardDraft.icon} onChange={(e) => setCardDraft((p) => ({ ...p, icon: e.target.value }))} placeholder="e.g. table-cells-large" /></div>
-        </div>
+        <CardFormWithRoles kind={kind} dialog={dialog} cardDraft={cardDraft} setCardDraft={setCardDraft}
+          roles={roles} getCardRoleIds={getCardRoleIds}
+          stageAddRoleAccess={stageAddRoleAccess} stageRemoveRoleAccess={stageRemoveRoleAccess} />
       ) : null}
-      {kind === "toggle-group" ? <p className="mb-0">{dialog?.nextIsActive ? "Enable" : "Disable"} card group <strong>{dialog?.target?.group_name || ""}</strong>?</p> : null}
-      {kind === "toggle-card" ? <p className="mb-0">{dialog?.nextIsActive ? "Enable" : "Disable"} card <strong>{dialog?.target?.card_name || ""}</strong>?</p> : null}
-      {kind === "deactivate-group" ? <p className="mb-0 text-danger">Deactivate card group <strong>{dialog?.target?.group_name || ""}</strong> and all associated cards?</p> : null}
-      {kind === "deactivate-card" ? <p className="mb-0 text-danger">Deactivate card <strong>{dialog?.target?.card_name || ""}</strong>?</p> : null}
     </Modal>
+  );
+}
+
+// ── Card Form (with role checkboxes) ──
+
+function CardFormWithRoles({ kind, dialog, cardDraft, setCardDraft, roles, getCardRoleIds, stageAddRoleAccess, stageRemoveRoleAccess }) {
+  const cardId = dialog?.target?.card_id;
+  const assignedRoleIds = useMemo(() => {
+    if (!cardId) return cardDraft.role_ids || [];
+    return getCardRoleIds(cardId);
+  }, [cardId, cardDraft.role_ids, getCardRoleIds]);
+
+  const handleRoleToggle = useCallback((roleId, checked) => {
+    if (cardId) {
+      if (checked) stageAddRoleAccess(cardId, roleId);
+      else stageRemoveRoleAccess(cardId, roleId);
+    } else {
+      setCardDraft((p) => {
+        const current = Array.isArray(p.role_ids) ? p.role_ids : [];
+        const next = checked ? [...current, String(roleId)] : current.filter((id) => id !== String(roleId));
+        return { ...p, role_ids: next };
+      });
+    }
+  }, [cardId, setCardDraft, stageAddRoleAccess, stageRemoveRoleAccess]);
+
+  return (
+    <div className="d-flex flex-column gap-3">
+      {kind === "add-card" ? <div className="small text-muted">Creating card for <strong>{dialog?.target?.group_name || "selected group"}</strong></div> : null}
+      <div className="row g-3">
+        <div className="col-6"><label className="form-label mb-1">Card Name</label><Input value={cardDraft.name} onChange={(e) => setCardDraft((p) => ({ ...p, name: e.target.value }))} placeholder="Enter card name" autoFocus /></div>
+        <div className="col-6"><label className="form-label mb-1">Description</label><Input value={cardDraft.desc} onChange={(e) => setCardDraft((p) => ({ ...p, desc: e.target.value }))} placeholder="Enter card description" /></div>
+      </div>
+      <div className="row g-3">
+        <div className="col-6"><label className="form-label mb-1">Icon</label><Input value={cardDraft.icon} onChange={(e) => setCardDraft((p) => ({ ...p, icon: e.target.value }))} placeholder="bi-file-earmark" /></div>
+        <div className="col-6"><label className="form-label mb-1">Launch URL</label><Input value={cardDraft.route_path} onChange={(e) => setCardDraft((p) => ({ ...p, route_path: e.target.value }))} placeholder="/dashboard or module:gutter/dashboard" /></div>
+      </div>
+      <fieldset>
+        <legend className="form-label mb-1" style={{ fontSize: "0.875rem" }}>Roles</legend>
+        <div className="border rounded p-2 d-flex flex-wrap gap-3">
+          {roles.length === 0 ? <span className="text-muted small">No roles available.</span> : null}
+          {roles.map((role) => {
+            const roleId = String(role?.role_id ?? "");
+            const isChecked = assignedRoleIds.includes(roleId);
+            return (
+              <div key={roleId} className="form-check">
+                <input type="checkbox" className="form-check-input" id={`role-chk-${roleId}`}
+                  checked={isChecked} onChange={(e) => handleRoleToggle(roleId, e.target.checked)} />
+                <label className="form-check-label small" htmlFor={`role-chk-${roleId}`}>{role?.role_name || roleId}</label>
+              </div>
+            );
+          })}
+        </div>
+        <div className="form-text">Select one or more roles for this card.</div>
+      </fieldset>
+    </div>
   );
 }
 
@@ -800,51 +855,31 @@ export default function CardModuleSetupView({ applications, cardGroups, cards, i
   const h = useCardModuleSetup({ applications, cardGroups, cards, initialSelectedAppId });
 
   return (
-    <main className="container py-4">
-      <CardModuleHeader
-        safeApplications={h.safeApplications} selectedApp={h.selectedApp}
-        hasPendingChanges={h.hasPendingChanges} pendingSummary={h.pendingSummary}
-        isSaving={h.isSaving} isMutatingAction={h.isMutatingAction}
-        isSelectedGroupPendingDeactivation={h.isSelectedGroupPendingDeactivation}
-        selectedGroup={h.selectedGroup}
-        handleSaveBatch={h.handleSaveBatch} handleCancelBatch={h.handleCancelBatch}
-        handleApplicationChange={h.handleApplicationChange}
-        openAddGroupDialog={h.openAddGroupDialog} openAddCardDialog={h.openAddCardDialog}
-      />
-      <div className="row g-3 align-items-start">
-        <div className="col-12 col-xl-5">
-          <GroupTable
-            decoratedGroups={h.decoratedGroups} selectedGroup={h.selectedGroup}
-            isSaving={h.isSaving} isMutatingAction={h.isMutatingAction}
-            pendingDeactivatedGroupIds={h.pendingDeactivatedGroupIds}
-            handleGroupRowClick={h.handleGroupRowClick} handleGroupReorder={h.handleGroupReorder}
-            editingGroupId={h.editingGroupId} onStartEditing={h.startEditingGroup} onStopEditing={h.stopEditingGroup}
-            onInlineEdit={h.handleInlineEditGroup}
-            openToggleGroupDialog={h.openToggleGroupDialog} openDeactivateGroupDialog={h.openDeactivateGroupDialog}
-            stageHardDeleteGroup={h.stageHardDeleteGroup} onUndoBatchAction={h.unstageHardDeleteGroup}
-          />
-        </div>
-        <div className="col-12 col-xl-7">
-          <CardPanel
-            selectedGroup={h.selectedGroup} decoratedSelectedGroupCards={h.decoratedSelectedGroupCards}
-            isSaving={h.isSaving} isMutatingAction={h.isMutatingAction}
-            pendingDeactivatedCardIds={h.pendingDeactivatedCardIds}
-            handleCardReorder={h.handleCardReorder}
-            editingCardId={h.editingCardId} onStartEditing={h.startEditingCard} onStopEditing={h.stopEditingCard}
-            onInlineEdit={h.handleInlineEditCard}
-            openToggleCardDialog={h.openToggleCardDialog} openDeactivateCardDialog={h.openDeactivateCardDialog}
-            stageHardDeleteCard={h.stageHardDeleteCard} onUndoBatchAction={h.unstageHardDeleteCard}
-          />
+    <main className="container-fluid py-4">
+      <div className="d-flex align-items-center mb-3">
+        <div>
+          <h1 className="h3 mb-0">Card Module Setup</h1>
+          <p className="text-muted mb-0">Manage card groups and cards for each application.</p>
         </div>
       </div>
+
+      <div className="setup-split-layout">
+        <AppSideNav
+          safeApplications={h.safeApplications} selectedApp={h.selectedApp}
+          isSaving={h.isSaving} isMutatingAction={h.isMutatingAction}
+          handleApplicationChange={h.handleApplicationChange}
+        />
+        <ContentPane h={h} />
+      </div>
+
       <CardModuleDialog
         dialog={h.dialog} groupDraft={h.groupDraft} cardDraft={h.cardDraft}
+        roles={h.roles} getCardRoleIds={h.getCardRoleIds}
         isMutatingAction={h.isMutatingAction}
         setGroupDraft={h.setGroupDraft} setCardDraft={h.setCardDraft} closeDialog={h.closeDialog}
         submitAddGroup={h.submitAddGroup} submitEditGroup={h.submitEditGroup}
-        submitToggleGroup={h.submitToggleGroup} submitDeactivateGroup={h.submitDeactivateGroup}
         submitAddCard={h.submitAddCard} submitEditCard={h.submitEditCard}
-        submitToggleCard={h.submitToggleCard} submitDeactivateCard={h.submitDeactivateCard}
+        stageAddRoleAccess={h.stageAddRoleAccess} stageRemoveRoleAccess={h.stageRemoveRoleAccess}
       />
     </main>
   );

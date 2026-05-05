@@ -128,6 +128,12 @@ export async function hardDeleteCardGroupAction(groupId) {
 export async function saveCardGroupOrderAction(groupIds) {
   if (!Array.isArray(groupIds) || groupIds.length === 0) return { updatedCount: 0 };
   const supabase = getSupabaseAdmin();
+  // Shift to temporary offset values to avoid unique constraint collisions
+  const offset = 100000;
+  for (let i = 0; i < groupIds.length; i++) {
+    const { error } = await supabase.from(GROUP_TABLE).update({ display_order: offset + i + 1 }).eq("group_id", groupIds[i]);
+    if (error) throw new Error(error.message || "Failed to update card group order");
+  }
   for (let i = 0; i < groupIds.length; i++) {
     const { error } = await supabase.from(GROUP_TABLE).update({ display_order: i + 1 }).eq("group_id", groupIds[i]);
     if (error) throw new Error(error.message || "Failed to update card group order");
@@ -214,9 +220,83 @@ export async function hardDeleteCardAction(cardId) {
 export async function saveCardOrderAction(cardIds) {
   if (!Array.isArray(cardIds) || cardIds.length === 0) return { updatedCount: 0 };
   const supabase = getSupabaseAdmin();
+  // Shift to temporary offset values to avoid unique constraint collisions
+  const offset = 100000;
+  for (let i = 0; i < cardIds.length; i++) {
+    const { error } = await supabase.from(CARD_TABLE).update({ display_order: offset + i + 1 }).eq("card_id", cardIds[i]);
+    if (error) throw new Error(error.message || "Failed to update card order");
+  }
   for (let i = 0; i < cardIds.length; i++) {
     const { error } = await supabase.from(CARD_TABLE).update({ display_order: i + 1 }).eq("card_id", cardIds[i]);
     if (error) throw new Error(error.message || "Failed to update card order");
   }
   return { updatedCount: cardIds.length };
+}
+
+// ─── Card Role Access Actions ──────────────────────────────
+
+export async function loadCardRoleAccessByApp(appId) {
+  if (appId == null || appId === "") return { roleAccess: [], roles: [] };
+  const supabase = getSupabaseAdmin();
+
+  const [{ data: access, error: aErr }, { data: roles, error: rErr }] = await Promise.all([
+    supabase.from(CARD_ROLE_ACCESS_TABLE).select("*").eq("is_active", true),
+    supabase.from("psb_s_role").select("*").eq("app_id", appId).eq("is_active", true).order("role_name", { ascending: true }),
+  ]);
+
+  if (aErr) throw new Error(aErr.message || "Failed to fetch card role access");
+  if (rErr) throw new Error(rErr.message || "Failed to fetch roles");
+
+  return {
+    roleAccess: Array.isArray(access) ? access : [],
+    roles: Array.isArray(roles) ? roles : [],
+  };
+}
+
+export async function upsertCardRoleAccessAction(cardId, roleId) {
+  if (cardId == null || cardId === "") throw new Error("Card ID is required.");
+  if (roleId == null || roleId === "") throw new Error("Role ID is required.");
+  const supabase = getSupabaseAdmin();
+
+  // Check if a row already exists (could be soft-deleted)
+  const { data: existing } = await supabase
+    .from(CARD_ROLE_ACCESS_TABLE)
+    .select("acr_id, is_active")
+    .eq("card_id", cardId)
+    .eq("role_id", roleId)
+    .maybeSingle();
+
+  if (existing?.acr_id) {
+    if (existing.is_active) return existing;
+    const { data, error } = await supabase
+      .from(CARD_ROLE_ACCESS_TABLE)
+      .update({ is_active: true })
+      .eq("acr_id", existing.acr_id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message || "Failed to re-enable card role access");
+    return data;
+  }
+
+  const { data, error } = await supabase
+    .from(CARD_ROLE_ACCESS_TABLE)
+    .insert({ card_id: cardId, role_id: roleId, is_active: true })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message || "Failed to create card role access");
+  return data;
+}
+
+export async function removeCardRoleAccessAction(cardId, roleId) {
+  if (cardId == null || cardId === "") throw new Error("Card ID is required.");
+  if (roleId == null || roleId === "") throw new Error("Role ID is required.");
+  const supabase = getSupabaseAdmin();
+
+  const { error } = await supabase
+    .from(CARD_ROLE_ACCESS_TABLE)
+    .update({ is_active: false })
+    .eq("card_id", cardId)
+    .eq("role_id", roleId);
+  if (error) throw new Error(error.message || "Failed to remove card role access");
+  return { cardId, roleId, removed: true };
 }

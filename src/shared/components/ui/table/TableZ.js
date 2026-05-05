@@ -221,6 +221,9 @@ export default function TableZ({
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   exportFormats = ["csv", "excel"],
   onUndoBatchAction,
+  hideSearch = false,
+  hideFooter = false,
+  renderDetail,
 }) {
   const tableId = useId();
   const controlledMode = isPlainObject(state) && typeof onChange === "function";
@@ -748,9 +751,11 @@ export default function TableZ({
   }, [controlledMode, effectiveSorting, filteredRows]);
 
   const effectiveTotal = controlledMode ? tableState.normalizedPagination.total : sortedRows.length;
-  const effectivePageSize = controlledMode
-    ? tableState.normalizedPagination.pageSize
-    : Math.max(1, toIntegerOrFallback(uncontrolledPageSize, DEFAULT_PAGE_SIZE));
+  const effectivePageSize = hideFooter
+    ? Math.max(effectiveTotal, 1)
+    : controlledMode
+      ? tableState.normalizedPagination.pageSize
+      : Math.max(1, toIntegerOrFallback(uncontrolledPageSize, DEFAULT_PAGE_SIZE));
   const effectiveTotalPages = controlledMode
     ? tableState.totalPages
     : Math.max(1, Math.ceil(effectiveTotal / effectivePageSize));
@@ -862,6 +867,7 @@ export default function TableZ({
       emptyValue: controlledMode ? "-" : "--",
       striped: !controlledMode,
       batchDiff: batchDiffById,
+      renderDetail,
     });
 
   const tableMarkup = (
@@ -1102,10 +1108,11 @@ export default function TableZ({
         </div>
       ) : null}
 
-      {searchShell}
+      {hideSearch ? null : searchShell}
 
       <div className="table-responsive">{tableWithDrag}</div>
 
+      {hideFooter ? null : (
       <div className="psb-ui-table-pagination">
         <div className="psb-ui-table-pagination-summary">
           {effectiveTotal === 0
@@ -1174,6 +1181,7 @@ export default function TableZ({
           </button>
         </div>
       </div>
+      )}
 
       <TableContextMenuWrapper
         open={contextMenuState.open}

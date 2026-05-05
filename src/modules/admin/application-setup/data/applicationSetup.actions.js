@@ -207,6 +207,15 @@ export async function saveApplicationOrderAction(appIds) {
   const invalidIds = requestedIds.filter((id) => !validIds.has(String(id)));
   if (invalidIds.length > 0) throw new Error("One or more applications are invalid for order updates.");
 
+  // Shift to temporary offset values to avoid unique constraint collisions
+  const offset = 100000;
+  for (let i = 0; i < requestedIds.length; i++) {
+    const { error } = await supabase.from("psb_s_application")
+      .update({ [orderField]: offset + i + 1 }).eq("app_id", requestedIds[i]);
+    if (error) throw new Error(error.message || "Failed to update application order");
+  }
+
+  // Now assign final order values
   for (let i = 0; i < requestedIds.length; i++) {
     const { error } = await supabase.from("psb_s_application")
       .update({ [orderField]: i + 1 }).eq("app_id", requestedIds[i]);

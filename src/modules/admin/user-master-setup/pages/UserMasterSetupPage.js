@@ -4,11 +4,15 @@ import { loadUserMasterSetupData } from "../data/userMasterSetup.actions.js";
 export const dynamic = "force-dynamic";
 
 export default async function UserMasterSetupPage() {
-  try {
-    const { users, totalUsers } = await loadUserMasterSetupData();
+  let users, totalUsers, error;
 
-    return <UserMasterSetupView users={users} totalUsers={totalUsers} />;
-  } catch (error) {
+  try {
+    ({ users, totalUsers } = await loadUserMasterSetupData());
+  } catch (e) {
+    error = e;
+  }
+
+  if (error) {
     return (
       <main className="container py-4">
         <div className="notice-banner notice-banner-danger mb-0">
@@ -18,4 +22,6 @@ export default async function UserMasterSetupPage() {
       </main>
     );
   }
+
+  return <UserMasterSetupView users={users} totalUsers={totalUsers} />;
 }

@@ -9,6 +9,7 @@ import {
   hardDeleteCardGroupAction, saveCardGroupOrderAction,
   createCardAction, updateCardAction, deactivateCardAction,
   hardDeleteCardAction, saveCardOrderAction,
+  upsertCardRoleAccessAction, removeCardRoleAccessAction,
 } from "./cardModuleSetup.actions.js";
 
 // ─── MODEL HELPERS ─────────────────────────────────────────
@@ -140,7 +141,7 @@ export const TEMP_GROUP_PREFIX = "tmp-grp-";
 export const TEMP_CARD_PREFIX = "tmp-card-";
 
 export function createEmptyBatchState() {
-  return { groupCreates: [], groupUpdates: {}, groupDeactivations: [], groupHardDeletes: [], cardCreates: [], cardUpdates: {}, cardDeactivations: [], cardHardDeletes: [] };
+  return { groupCreates: [], groupUpdates: {}, groupDeactivations: [], groupHardDeletes: [], cardCreates: [], cardUpdates: {}, cardDeactivations: [], cardHardDeletes: [], roleAccessAdds: [], roleAccessRemoves: [] };
 }
 
 export function createTempId(prefix) {
@@ -243,6 +244,23 @@ export async function executeBatchSave(pendingBatch, appGroups, allCards, persis
     if (orderedCardIds.length > 0) {
       await saveCardOrderAction(orderedCardIds);
     }
+  }
+
+  // Save role access adds
+  for (const entry of pendingBatch.roleAccessAdds || []) {
+    const cardId = String(entry?.card_id ?? "");
+    const roleId = String(entry?.role_id ?? "");
+    if (!cardId || !roleId) continue;
+    if (deactivatedCardSet.has(cardId)) continue;
+    await upsertCardRoleAccessAction(cardId, roleId);
+  }
+
+  // Save role access removes
+  for (const entry of pendingBatch.roleAccessRemoves || []) {
+    const cardId = String(entry?.card_id ?? "");
+    const roleId = String(entry?.role_id ?? "");
+    if (!cardId || !roleId) continue;
+    await removeCardRoleAccessAction(cardId, roleId);
   }
 
   return { groupIdMap, deactivatedGroupSet, orderedPersistedGroupIds };

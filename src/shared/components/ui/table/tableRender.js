@@ -1,3 +1,4 @@
+import React from "react";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -264,10 +265,12 @@ export function renderTableBody({
   emptyValue,
   striped = false,
   batchDiff,
+  renderDetail,
 }) {
   const normalizedRows = Array.isArray(rows) ? rows : [];
   const hasRows = normalizedRows.length > 0;
   const rowClickable = typeof onRowClick === "function";
+  const hasRenderDetail = typeof renderDetail === "function";
 
   if (!hasRows) {
     return (
@@ -287,27 +290,37 @@ export function renderTableBody({
         <tbody>
           {normalizedRows.map((row, rowIndex) => {
             const rowId = toRowId(row, rowIdKey, rowIndex);
+            const isSelected = hasRenderDetail && String(selectedRowId ?? "") === String(row?.[rowIdKey] ?? "");
+            const detailContent = isSelected ? renderDetail(row) : null;
 
             return (
-              <SortableBodyRow
-                key={rowId}
-                row={row}
-                rowIndex={rowIndex}
-                rowId={rowId}
-                columns={columns}
-                actionColumnVisible={actionColumnVisible}
-                rowClickable={rowClickable}
-                selectedRowId={selectedRowId}
-                rowIdKey={rowIdKey}
-                onRowClick={onRowClick}
-                actions={actions}
-                onAction={onAction}
-                onUndoBatchAction={onUndoBatchAction}
-                renderCellContext={renderCellContext}
-                emptyValue={emptyValue}
-                striped={striped}
-                batchDiff={batchDiff}
-              />
+              <React.Fragment key={rowId}>
+                <SortableBodyRow
+                  row={row}
+                  rowIndex={rowIndex}
+                  rowId={rowId}
+                  columns={columns}
+                  actionColumnVisible={actionColumnVisible}
+                  rowClickable={rowClickable}
+                  selectedRowId={selectedRowId}
+                  rowIdKey={rowIdKey}
+                  onRowClick={onRowClick}
+                  actions={actions}
+                  onAction={onAction}
+                  onUndoBatchAction={onUndoBatchAction}
+                  renderCellContext={renderCellContext}
+                  emptyValue={emptyValue}
+                  striped={striped}
+                  batchDiff={batchDiff}
+                />
+                {detailContent ? (
+                  <tr className="psb-ui-table-detail-row">
+                    <td colSpan={emptyColSpan}>
+                      {detailContent}
+                    </td>
+                  </tr>
+                ) : null}
+              </React.Fragment>
             );
           })}
         </tbody>
@@ -319,27 +332,37 @@ export function renderTableBody({
     <tbody>
       {normalizedRows.map((row, rowIndex) => {
         const rowId = toRowId(row, rowIdKey, rowIndex);
+        const isSelected = hasRenderDetail && String(selectedRowId ?? "") === String(row?.[rowIdKey] ?? "");
+        const detailContent = isSelected ? renderDetail(row) : null;
 
         return (
-          <StaticBodyRow
-            key={rowId}
-            row={row}
-            rowIndex={rowIndex}
-            rowId={rowId}
-            columns={columns}
-            actionColumnVisible={actionColumnVisible}
-            rowClickable={rowClickable}
-            selectedRowId={selectedRowId}
-            rowIdKey={rowIdKey}
-            onRowClick={onRowClick}
-            actions={actions}
-            onAction={onAction}
-            onUndoBatchAction={onUndoBatchAction}
-            renderCellContext={renderCellContext}
-            emptyValue={emptyValue}
-            striped={striped}
-            batchDiff={batchDiff}
-          />
+          <React.Fragment key={rowId}>
+            <StaticBodyRow
+              row={row}
+              rowIndex={rowIndex}
+              rowId={rowId}
+              columns={columns}
+              actionColumnVisible={actionColumnVisible}
+              rowClickable={rowClickable}
+              selectedRowId={selectedRowId}
+              rowIdKey={rowIdKey}
+              onRowClick={onRowClick}
+              actions={actions}
+              onAction={onAction}
+              onUndoBatchAction={onUndoBatchAction}
+              renderCellContext={renderCellContext}
+              emptyValue={emptyValue}
+              striped={striped}
+              batchDiff={batchDiff}
+            />
+            {detailContent ? (
+              <tr className="psb-ui-table-detail-row">
+                <td colSpan={emptyColSpan}>
+                  {detailContent}
+                </td>
+              </tr>
+            ) : null}
+          </React.Fragment>
         );
       })}
     </tbody>

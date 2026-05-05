@@ -939,6 +939,36 @@ h6,
   }
 }
 
+/* ── Group Accordion ── */
+
+.setup-group-accordion-item {
+  overflow: hidden;
+}
+
+.setup-group-accordion-item.is-deleted {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.setup-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 120ms ease;
+}
+
+.setup-group-header:hover {
+  background: #f0f6fb;
+}
+
+.setup-group-accordion-item.is-expanded .setup-group-header {
+  background: #f7fbff;
+  border-bottom: 1px solid #e2ecf4;
+}
+
 @media (max-width: 991px) {
   .setup-split-layout {
     grid-template-columns: 1fr;
