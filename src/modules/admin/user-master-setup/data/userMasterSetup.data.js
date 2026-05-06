@@ -147,11 +147,11 @@ export function makeLocalAccessRow(appId, roleId, lookups, current = {}) {
 function toAccessSet(rows) {
   const m = new Map();
   (Array.isArray(rows) ? rows : []).forEach((r) => {
-    if (!r || !isTruthy(r?.is_active)) return;
+    if (!r) return;
     const a = normalizeText(r?.app_id), ro = normalizeText(r?.role_id);
     if (!a || !ro) return;
     const key = `${a}::${ro}`;
-    if (!m.has(key)) m.set(key, { app_id: a, role_id: ro });
+    if (!m.has(key)) m.set(key, { app_id: a, role_id: ro, is_active: isTruthy(r?.is_active) });
   });
   return m;
 }
@@ -159,7 +159,12 @@ function toAccessSet(rows) {
 export function diffAccessRows(originalRows, currentRows) {
   const originalSet = toAccessSet(originalRows), currentSet = toAccessSet(currentRows);
   const deletes = []; originalSet.forEach((v, k) => { if (!currentSet.has(k)) deletes.push(v); });
-  const upserts = []; currentSet.forEach((v, k) => { if (!originalSet.has(k)) upserts.push(v); });
+  const upserts = [];
+  currentSet.forEach((v, k) => {
+    const orig = originalSet.get(k);
+    if (!orig) { upserts.push(v); return; }
+    if (orig.is_active !== v.is_active) upserts.push(v);
+  });
   return { deletes, upserts };
 }
 

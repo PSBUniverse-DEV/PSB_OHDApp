@@ -570,7 +570,7 @@ export async function createAccessAction(userId, payload) {
     throw new Error("Selected role does not belong to the selected application.");
 
   const { data, error } = await supabase.from("psb_m_userapproleaccess")
-    .insert({ user_id: userId, app_id: appId, role_id: roleId, is_active: hasOwn(payload, "is_active") ? normalizeBoolean(payload.is_active) : true })
+    .upsert({ user_id: userId, app_id: appId, role_id: roleId, is_active: hasOwn(payload, "is_active") ? normalizeBoolean(payload.is_active) : true }, { onConflict: "user_id,app_id,role_id" })
     .select("*").single();
   if (error) throw new Error(error.message || "Failed to create access row.");
 

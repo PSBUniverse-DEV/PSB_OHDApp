@@ -1209,7 +1209,7 @@
   position: fixed;
   top: 0;
   right: 0;
-  width: min(560px, 96vw);
+  width: min(680px, 96vw);
   height: 100vh;
   background: #ffffff;
   border-left: 1px solid #d5e2ec;

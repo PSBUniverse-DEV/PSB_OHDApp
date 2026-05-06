@@ -79,6 +79,7 @@ export default function AuthProvider({ children }) {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const hasInitializedRef = useRef(false);
+  const lastAuthUserIdRef = useRef(null);
 
   useEffect(() => {
     const supabase = getSupabase();
@@ -92,6 +93,7 @@ export default function AuthProvider({ children }) {
       setAuthUser(null);
       setDbUser(null);
       setRoles([]);
+      lastAuthUserIdRef.current = null;
       setLoading(false);
     }
 
@@ -165,6 +167,7 @@ export default function AuthProvider({ children }) {
       setAuthUser(resolvedAuthUser);
       setDbUser(resolvedDbUser);
       setRoles(resolvedRoles);
+      lastAuthUserIdRef.current = resolvedAuthUser?.id || null;
       if (!background) {
         setLoading(false);
       }
@@ -194,6 +197,7 @@ export default function AuthProvider({ children }) {
                   : fallbackUserFromAuth(bootstrapAuthUser),
               );
               setRoles(Array.isArray(bootstrapPayload?.roles) ? bootstrapPayload.roles : []);
+              lastAuthUserIdRef.current = bootstrapAuthUser.id;
               setLoading(false);
               return;
             }
@@ -227,6 +231,11 @@ export default function AuthProvider({ children }) {
       const sessionUser = session?.user ?? null;
 
       if (!sessionUser && event !== "SIGNED_OUT") {
+        return;
+      }
+
+      // Skip redundant cross-tab events when user hasn't changed
+      if (event === "TOKEN_REFRESHED" && sessionUser?.id && sessionUser.id === lastAuthUserIdRef.current) {
         return;
       }
 

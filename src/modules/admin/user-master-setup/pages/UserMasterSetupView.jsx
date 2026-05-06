@@ -22,7 +22,7 @@ const EMPTY_ACCESS_EDITOR = { mode: null, access_key: null, original_app_id: "",
 
 function useUserPanel({
   lookups, tableRows, selectedUserRow, pendingBatch,
-  setTableRows, setPendingBatch,
+  setTableRows, setPendingBatch, refreshUsers,
 }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelMode, setPanelMode] = useState("view");
@@ -167,7 +167,7 @@ function useUserPanel({
 
   const [isStaging, setIsStaging] = useState(false);
 
-  const stagePanelChanges = useCallback(() => {
+  const stagePanelChanges = useCallback(async () => {
     if (!panelEditable) return;
     setIsStaging(true);
     try {
@@ -183,35 +183,31 @@ function useUserPanel({
       const stagedPw = enableNewPassword ? normalizeText(newPasswordValue) : "";
       const payload = buildUserPayload(form, stagedPw);
 
+      let batch;
       if (panelMode === "add") {
         const tempId = `tmp-${Date.now().toString(36)}`;
-        const previewRow = summarizeUserRow(form, lookups, { id: tempId, user_id: tempId, __batchState: "created" });
-        updateTableRow(previewRow, { prepend: true });
-        setPendingBatch((p) => ({ ...p, creates: [...(Array.isArray(p?.creates) ? p.creates : []), { tempId, payload, accessRows: [] }] }));
-        toastSuccess("New user staged. Use Save Batch to commit.", "User Master Setup"); resetPanelState(); return;
+        batch = { ...createEmptyPendingBatch(), creates: [{ tempId, payload, accessRows: cloneAccessRows(accessRows) }] };
+      } else {
+        const userId = normalizeText(panelUserId);
+        if (!userId || isTemporaryId(userId)) throw new Error("Invalid user selected for update.");
+        const { deletes, upserts } = diffAccessRows(baselineAccessRows, accessRows);
+        batch = {
+          ...createEmptyPendingBatch(),
+          updates: { [userId]: payload },
+          accessUpserts: upserts.length > 0 ? { [userId]: upserts } : {},
+          accessDeletes: deletes.length > 0 ? { [userId]: deletes } : {},
+        };
       }
 
-      const userId = normalizeText(panelUserId);
-      if (!userId || isTemporaryId(userId)) throw new Error("Invalid user selected for update.");
-      const { deletes, upserts } = diffAccessRows(baselineAccessRows, accessRows);
-      const previewRow = summarizeUserRow(form, lookups, { ...(selectedUserRow || {}), id: userId, user_id: userId, __batchState: "updated" });
-      updateTableRow(previewRow);
-      setPendingBatch((p) => ({
-        ...p,
-        updates: { ...(p?.updates || {}), [userId]: payload },
-        accessUpserts: replaceObjectKeyWithArray(p?.accessUpserts, userId, upserts),
-        accessDeletes: replaceObjectKeyWithArray(p?.accessDeletes, userId, deletes),
-      }));
-      setBaselineForm(cloneForm(form)); setBaselineAccessRows(cloneAccessRows(accessRows));
-      setEnableNewPassword(false); setNewPasswordValue(""); setConfirmNewPassword("");
-      setPanelMode("view"); setBaselineSnapshot(buildPanelSnapshot(form, accessRows, false, "", ""));
-      setAccessEditor(EMPTY_ACCESS_EDITOR);
-      toastSuccess("User changes staged. Use Save Batch to commit.", "User Master Setup");
+      await executeBatchSave(batch);
+      await refreshUsers({ silent: true });
+      resetPanelState();
+      toastSuccess(panelMode === "add" ? "User created successfully." : "User updated successfully.", "User Master Setup");
     } catch (error) {
-      toastError(error?.message || "Failed to stage changes.", "User Master Setup");
+      toastError(error?.message || "Failed to save changes.", "User Master Setup");
     } finally { setIsStaging(false); }
-  }, [accessRows, baselineAccessRows, confirmNewPassword, enableNewPassword, form, lookups,
-    newPasswordValue, panelEditable, panelMode, panelUserId, resetPanelState, selectedUserRow, setPendingBatch, updateTableRow]);
+  }, [accessRows, baselineAccessRows, confirmNewPassword, enableNewPassword, form,
+    newPasswordValue, panelEditable, panelMode, panelUserId, refreshUsers, resetPanelState]);
 
   const restorePanelToBaseline = useCallback(() => {
     if (panelMode === "add") { resetPanelState(); return; }
@@ -219,6 +215,7 @@ function useUserPanel({
     setEnableNewPassword(false); setNewPasswordValue(""); setConfirmNewPassword("");
     setAccessEditor(EMPTY_ACCESS_EDITOR);
     setBaselineSnapshot(buildPanelSnapshot(baselineForm, baselineAccessRows, false, "", ""));
+    setPanelMode("view");
   }, [baselineAccessRows, baselineForm, panelMode, resetPanelState]);
 
   return {
@@ -253,7 +250,17 @@ function useUserMasterSetup({ users = [], totalUsers = 0 }) {
   const hasPendingChanges = pendingCount > 0;
   const totalRowCount = useMemo(() => tableRows.length || (Number.isFinite(Number(totalUsers)) ? Number(totalUsers) : 0), [tableRows.length, totalUsers]);
 
-  const panel = useUserPanel({ lookups, tableRows, selectedUserRow: null, pendingBatch, setTableRows, setPendingBatch });
+  const refreshUsers = useCallback(async ({ silent = false } = {}) => {
+    setIsRefreshing(true);
+    try {
+      const next = await fetchUsers();
+      setTableRows(next.map((r) => ({ ...r, __batchState: "none" })));
+      if (!silent) toastSuccess("User list refreshed.", "User Master Setup");
+    } catch (error) { toastError(error?.message || "Failed to load users.", "User Master Setup"); }
+    finally { setIsRefreshing(false); }
+  }, []);
+
+  const panel = useUserPanel({ lookups, tableRows, selectedUserRow: null, pendingBatch, setTableRows, setPendingBatch, refreshUsers });
 
   const selectedUserRow = useMemo(
     () => tableRows.find((r) => rowIdOf(r) === String(panel.panelUserId ?? "")) || null,
@@ -280,16 +287,6 @@ function useUserMasterSetup({ users = [], totalUsers = 0 }) {
     try { setLookups(await fetchLookups()); }
     catch (error) { toastError(error?.message || "Failed to load lookups.", "User Master Setup"); }
     finally { setIsLoadingLookups(false); }
-  }, []);
-
-  const refreshUsers = useCallback(async ({ silent = false } = {}) => {
-    setIsRefreshing(true);
-    try {
-      const next = await fetchUsers();
-      setTableRows(next.map((r) => ({ ...r, __batchState: "none" })));
-      if (!silent) toastSuccess("User list refreshed.", "User Master Setup");
-    } catch (error) { toastError(error?.message || "Failed to load users.", "User Master Setup"); }
-    finally { setIsRefreshing(false); }
   }, []);
 
   useEffect(() => { loadLookups(); }, [loadLookups]);
@@ -361,9 +358,9 @@ function useUserMasterSetup({ users = [], totalUsers = 0 }) {
 // ═══════════════════════════════════════════════════════════
 
 function UserMasterHeader({
-  totalRowCount, hasPendingChanges, pendingCount,
+  totalRowCount,
   isSavingBatch, isRefreshing,
-  openAddUserPanel, saveBatch, cancelBatch, refreshUsers,
+  openAddUserPanel, refreshUsers,
 }) {
   return (
     <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -372,17 +369,8 @@ function UserMasterHeader({
         <p className="text-muted mb-0">{totalRowCount} user row(s)</p>
       </div>
       <div className="d-flex flex-wrap align-items-center gap-2">
-        <span className={`small ${hasPendingChanges ? "text-warning" : "text-muted"}`}>
-          {hasPendingChanges ? `${pendingCount} staged change(s)` : "No staged changes"}
-        </span>
         <Button type="button" variant="success" size="sm" onClick={openAddUserPanel} disabled={isSavingBatch || isRefreshing}>
           Add User
-        </Button>
-        <Button type="button" variant="primary" size="sm" onClick={saveBatch} disabled={!hasPendingChanges || isSavingBatch || isRefreshing}>
-          {isSavingBatch ? "Saving..." : "Save Batch"}
-        </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={cancelBatch} disabled={!hasPendingChanges || isSavingBatch || isRefreshing}>
-          Cancel Batch
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => refreshUsers()} disabled={isSavingBatch || isRefreshing}>
           {isRefreshing ? "Refreshing..." : "Refresh"}
@@ -419,7 +407,7 @@ function UserTableSection({ tableRows, panelUserId, panelOpen, onRowClick }) {
 function UserPanelSection({
   panelOpen, panelMode, isPanelLoading, panelDirty, panelEditable,
   canDeactivateCurrentUser, isStaging, isLoadingLookups, isSavingBatch,
-  activeTab, form, setForm, accessRows, accessEditor, setAccessEditor,
+  activeTab, form, setForm, accessRows, setAccessRows, accessEditor, setAccessEditor,
   enableNewPassword, setEnableNewPassword, newPasswordValue, setNewPasswordValue,
   confirmNewPassword, setConfirmNewPassword,
   selectedStatusLabel, departmentsForCompany, roleOptionsForAccessEditor, lookups,
@@ -432,19 +420,26 @@ function UserPanelSection({
   const activeTabMeta = TABS.find((t) => t.key === activeTab) || TABS[0];
 
   const accessColumns = useMemo(() => [
-    { key: "application_name", label: "Application", width: 260 },
-    { key: "role_name", label: "Role", width: 260 },
-    { key: "is_active", label: "Status", width: 120, align: "center",
+    { key: "application_name", label: "Application" },
+    { key: "role_name", label: "Role" },
+    { key: "is_active", label: "Status", width: 100, align: "center",
       render: (r) => <StatusBadge status={r?.is_active ? "active" : "inactive"} /> },
   ], []);
 
   const accessTableActions = useMemo(() => [
-    { key: "edit-access", label: "Edit Access", type: "secondary", icon: "pen",
-      visible: () => panelEditable,
+    { key: "edit-access", label: "Edit", type: "secondary", icon: "pen",
+      visible: (r) => panelEditable && r?.is_active,
       onClick: (r) => { if (!panelEditable) return; setAccessEditor({ mode: "edit", access_key: r?.access_key, original_app_id: normalizeText(r?.app_id), original_role_id: normalizeText(r?.role_id), app_id: normalizeText(r?.app_id), role_id: normalizeText(r?.role_id) }); } },
-    { key: "deactivate-access", label: "Deactivate Access", type: "secondary", icon: "ban",
-      visible: () => panelEditable, onClick: (r) => { if (panelEditable) setPendingAccessDeactivateRow(r || null); } },
-  ], [panelEditable, setAccessEditor, setPendingAccessDeactivateRow]);
+    { key: "deactivate-access", label: "Deactivate", type: "warning", icon: "ban",
+      visible: (r) => panelEditable && r?.is_active,
+      onClick: (r) => { if (!panelEditable || !r) return; setAccessRows((prev) => prev.map((row) => String(row?.access_key) === String(r?.access_key) ? { ...row, is_active: false } : row)); } },
+    { key: "activate-access", label: "Activate", type: "success", icon: "check",
+      visible: (r) => panelEditable && !r?.is_active,
+      onClick: (r) => { if (!panelEditable || !r) return; setAccessRows((prev) => prev.map((row) => String(row?.access_key) === String(r?.access_key) ? { ...row, is_active: true } : row)); } },
+    { key: "delete-access", label: "Delete", type: "danger", icon: "trash",
+      visible: () => panelEditable,
+      onClick: (r) => { if (!panelEditable || !r) return; setAccessRows((prev) => prev.filter((row) => String(row?.access_key) !== String(r?.access_key))); } },
+  ], [panelEditable, setAccessEditor, setAccessRows]);
 
   const accessEditorReady = Boolean(normalizeText(accessEditor?.app_id) && normalizeText(accessEditor?.role_id));
 
@@ -458,6 +453,7 @@ function UserPanelSection({
             <Badge bg={panelMode === "view" ? "info" : "warning"} text="dark">{panelMode.toUpperCase()}</Badge>
             {panelDirty ? <span className="small text-danger fw-semibold">Unsaved changes</span> : <span className="small text-muted">All changes staged</span>}
           </div>
+          {panelMode !== "add" && <p className="small text-muted mb-0 mt-1">{[form?.first_name, form?.middle_name, form?.last_name].filter(Boolean).join(" ") || form?.username || ""}</p>}
         </div>
         <Button type="button" variant="ghost" size="sm" className="umsp-close-btn" onClick={closePanel}><FontAwesomeIcon icon={faXmark} aria-hidden="true" /></Button>
       </div>
@@ -547,7 +543,7 @@ function UserPanelSection({
                     </div>
                   </div>
                 ) : null}
-                <TableZ className="umsp-access-table" columns={accessColumns} data={accessRows} rowIdKey="access_key" selectedRowId={null} emptyMessage="No access mappings assigned." actions={accessTableActions} />
+                <TableZ className="umsp-access-table" columns={accessColumns} data={accessRows} rowIdKey="access_key" selectedRowId={null} emptyMessage="No access mappings assigned." actions={accessTableActions} hideSearch hideFooter />
               </>
             ) : null}
 
@@ -569,6 +565,23 @@ function UserPanelSection({
                       <Input type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} disabled={!panelEditable || isPanelLoading} placeholder="Re-enter password" /></div>
                   </>
                 ) : null}
+                {panelEditable && canDeactivateCurrentUser ? (
+                  <div className="col-12 mt-3 pt-3 border-top">
+                    <label className="form-label mb-1">User Status</label>
+                    <div>
+                      {form?.is_active ? (
+                        <Button type="button" variant="danger" size="sm" onClick={deactivateCurrentUser} disabled={isStaging || isSavingBatch}>
+                          Deactivate User
+                        </Button>
+                      ) : (
+                        <Button type="button" variant="success" size="sm" onClick={() => { setForm((f) => ({ ...f, is_active: true, status_id: "1" })); }} disabled={isStaging || isSavingBatch}>
+                          Activate User
+                        </Button>
+                      )}
+                      <p className="small text-muted mt-1 mb-0">{form?.is_active ? "Deactivating will revoke all access mappings." : "Reactivate this user account."}</p>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -582,9 +595,9 @@ function UserPanelSection({
             ) : (
               <>
                 <Button type="button" variant="primary" size="sm" onClick={stagePanelChanges} disabled={isStaging || isSavingBatch || isLoadingLookups}>
-                  {isStaging ? "Staging..." : "Stage Changes"}</Button>
+                  {isStaging ? "Saving..." : "Save"}</Button>
                 <Button type="button" variant="ghost" size="sm" onClick={restorePanelToBaseline} disabled={isStaging || isSavingBatch}>
-                  {panelMode === "add" ? "Cancel" : "Revert"}</Button>
+                  Cancel</Button>
               </>
             )}
           </div>
@@ -645,8 +658,7 @@ export default function UserMasterSetupView({ users, totalUsers }) {
         <UserMasterHeader
           totalRowCount={h.totalRowCount} hasPendingChanges={h.hasPendingChanges} pendingCount={h.pendingCount}
           isSavingBatch={h.isSavingBatch} isRefreshing={h.isRefreshing}
-          openAddUserPanel={h.openAddUserPanel} saveBatch={h.saveBatch}
-          cancelBatch={h.cancelBatch} refreshUsers={h.refreshUsers}
+          openAddUserPanel={h.openAddUserPanel} refreshUsers={h.refreshUsers}
         />
         <UserTableSection tableRows={h.tableRows} panelUserId={h.panelUserId} panelOpen={h.panelOpen}
           onRowClick={(row) => h.openExistingUserPanel(row, "view")} />
@@ -658,7 +670,7 @@ export default function UserMasterSetupView({ users, totalUsers }) {
         canDeactivateCurrentUser={h.canDeactivateCurrentUser} isStaging={h.isStaging}
         isLoadingLookups={h.isLoadingLookups} isSavingBatch={h.isSavingBatch}
         activeTab={h.activeTab} form={h.form} setForm={h.setForm}
-        accessRows={h.accessRows} accessEditor={h.accessEditor} setAccessEditor={h.setAccessEditor}
+        accessRows={h.accessRows} setAccessRows={h.setAccessRows} accessEditor={h.accessEditor} setAccessEditor={h.setAccessEditor}
         enableNewPassword={h.enableNewPassword} setEnableNewPassword={h.setEnableNewPassword}
         newPasswordValue={h.newPasswordValue} setNewPasswordValue={h.setNewPasswordValue}
         confirmNewPassword={h.confirmNewPassword} setConfirmNewPassword={h.setConfirmNewPassword}
