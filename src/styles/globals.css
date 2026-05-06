@@ -3028,3 +3028,11 @@ textarea.quote-field-control {
     min-width: 0;
   }
 }
+
+/* ─── Modal z-index override ─── */
+.modal-backdrop {
+  z-index: 9998 !important;
+}
+.modal {
+  z-index: 9999 !important;
+}

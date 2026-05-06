@@ -577,7 +577,7 @@ function ApplicationTable({
           <h6 className="mb-0 small fw-semibold">Roles for: {selectedApp.app_name}</h6>
         </div>
         <TableZ columns={roleColumns} data={decoratedSelectedAppRoles} rowIdKey="role_id"
-          actions={roleActions} hideFooter
+          actions={roleActions} hideFooter hideSearch
           emptyMessage="No roles assigned to this application."
           onUndoBatchAction={onUndoBatchActionRole} />
       </div>

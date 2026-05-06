@@ -976,9 +976,6 @@ export default function TableZ({
 
   const searchShell = (
     <div className="psb-ui-table-search-shell">
-      <Form.Label className="psb-ui-table-filter-label" htmlFor={searchInputId}>
-        Search
-      </Form.Label>
       <SearchBar
         id={searchInputId}
         value={effectiveSearchValue}

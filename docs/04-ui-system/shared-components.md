@@ -397,6 +397,62 @@ User interacts with TableZ
 
 ---
 
+## TableZ Props Reference
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `columns` | `Array` | required | Column definitions: `{ key, label, render?, sortable?, resizable? }` |
+| `data` | `Array` | required | Row data array |
+| `rowIdKey` | `string` | `"id"` | Property name used as unique row identifier |
+| `actions` | `Array` | `[]` | Row action definitions: `{ type, label, icon?, onClick, hidden? }` |
+| `selectedRowId` | `string\|null` | `null` | Currently selected/expanded row ID (highlights the row) |
+| `onRowClick` | `function` | -- | Callback fired when a row is clicked: `(row) => void` |
+| `draggable` | `boolean` | `false` | Enable drag-and-drop row reordering |
+| `onReorder` | `function` | -- | Callback fired after reorder: `(newOrderedData) => void` |
+| `hideSearch` | `boolean` | `false` | Hides the search input bar |
+| `hideFooter` | `boolean` | `false` | Hides the table footer (pagination/row count) |
+| `renderDetail` | `function` | -- | Renders an expandable detail panel below the selected row: `(row) => ReactNode` |
+| `onSortChange` | `function` | -- | Sort event callback |
+| `onFilterChange` | `function` | -- | Filter event callback |
+
+### Master-Detail Pattern
+
+Use `selectedRowId` + `onRowClick` + `renderDetail` to build expandable master-detail tables:
+
+```jsx
+import { TableZ } from "@/shared/components/ui";
+
+const [expandedId, setExpandedId] = useState(null);
+
+function handleRowClick(row) {
+  setExpandedId((prev) => (prev === row.app_id ? null : row.app_id));
+}
+
+<TableZ
+  columns={columns}
+  data={applications}
+  rowIdKey="app_id"
+  actions={actions}
+  selectedRowId={expandedId}
+  onRowClick={handleRowClick}
+  draggable
+  onReorder={handleReorder}
+  renderDetail={(row) => (
+    <div>
+      <h6>Roles for: {row.app_name}</h6>
+      <TableZ columns={roleColumns} data={getRolesForApp(row.app_id)} hideSearch hideFooter />
+    </div>
+  )}
+/>
+```
+
+**Behavior:**
+- Clicking a row expands its detail panel. Clicking the same row again collapses it (toggle).
+- `hideSearch` and `hideFooter` are useful on nested/detail tables where search and pagination are unnecessary.
+- `draggable` + `onReorder` enables drag handles on each row for manual ordering.
+
+---
+
 ## Row Actions
 
 Row actions are config-driven via the `actions` prop on TableZ/TableX. The `ActionColumn` component renders them.

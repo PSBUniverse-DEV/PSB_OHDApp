@@ -97,7 +97,7 @@ function hasExampleNavAccess(roles) {
       normalizeAccessToken(mapping.role_key) ||
       normalizeAccessToken(mapping.role_id);
 
-    return appToken === "PSBUNIVERSE" && roleToken === "DEVMAIN";
+    return appToken === "PSBUNIVERSE" && roleToken === "MASTER";
   });
 }
 

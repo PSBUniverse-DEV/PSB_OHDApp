@@ -5,7 +5,7 @@ import { Button, Card, Col, Container, Form, Modal, Row, Spinner } from "react-b
 import { useAuth } from "@/core/auth/useAuth";
 import { getSupabase } from "@/core/supabase/client";
 import { toastError, toastInfo, toastSuccess } from "@/shared/utils/toast";
-import { StatusBadge } from "@/shared/components/ui";
+import { Badge, StatusBadge } from "@/shared/components/ui";
 import {
   hasText, getLabel, buildInitials, statusIsActive, buildRequestUpdateMailto,
   buildProfile, buildRelations, buildRoleGroupsByApp,
@@ -166,7 +166,7 @@ function ProfileSocialCard({
 
 function ProfileSummaryCard({
   profile, companyLabel, departmentLabel,
-  roleGroupsByApp, requestUpdateHref, copyToClipboard,
+  requestUpdateHref, copyToClipboard,
 }) {
   const renderValue = useCallback((value, options = {}) => {
     const text = String(value || "").trim();
@@ -189,32 +189,6 @@ function ProfileSummaryCard({
         <p className="profile-section-kicker mb-1">My PSB</p>
         <h4 className="mb-1">Profile Snapshot</h4>
         <p className="text-muted mb-2">Your account details are visible here for quick reference.</p>
-
-        <div className="profile-roles-panel mb-2">
-          <p className="profile-detail-label mb-1">Roles</p>
-          {roleGroupsByApp.length > 0 ? (
-            <div className="profile-role-groups">
-              {roleGroupsByApp.map((group) => (
-                <div key={`role-group-${group.appId || group.appName}`} className="profile-role-group-card">
-                  <p className="profile-role-app-name mb-1">{group.appName}</p>
-                  <div className="profile-role-pills">
-                    {group.roles.map((role) => (
-                      <Badge key={`role-pill-${group.appId}-${role.roleId || role.roleName}`}
-                        className="profile-role-pill" bg="light" text="dark">
-                        {role.roleName}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="profile-empty-value profile-empty-roles">
-              <span className="profile-empty-icon" aria-hidden="true">i</span>
-              <span>No roles assigned</span>
-            </div>
-          )}
-        </div>
 
         <Row className="g-2 profile-info-grid">
           <Col sm={6}>
@@ -260,6 +234,38 @@ function ProfileSummaryCard({
             </div>
           </Col>
         </Row>
+      </Card.Body>
+    </Card>
+  );
+}
+
+function ProfileRolesCard({ roleGroupsByApp }) {
+  return (
+    <Card className="profile-roles-card border-0 shadow-sm">
+      <Card.Body>
+        <p className="profile-detail-label mb-2">Roles</p>
+        {roleGroupsByApp.length > 0 ? (
+          <div className="profile-role-groups">
+            {roleGroupsByApp.map((group) => (
+              <div key={`role-group-${group.appId || group.appName}`} className="profile-role-group-card">
+                <p className="profile-role-app-name mb-1">{group.appName}</p>
+                <div className="profile-role-pills">
+                  {group.roles.map((role) => (
+                    <Badge key={`role-pill-${group.appId}-${role.roleId || role.roleName}`}
+                      className="profile-role-pill" bg="light" text="dark">
+                      {role.roleName}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="profile-empty-value profile-empty-roles">
+            <span className="profile-empty-icon" aria-hidden="true">i</span>
+            <span>No roles assigned</span>
+          </div>
+        )}
       </Card.Body>
     </Card>
   );
@@ -384,7 +390,7 @@ export default function ProfileView() {
       ) : null}
 
       <Row className="g-3 align-items-start">
-        <Col lg={4} className="profile-social-col">
+        <Col lg={4} className="profile-social-col" style={{ flex: "0 0 30%", maxWidth: "30%" }}>
           <ProfileSocialCard
             profile={h.profile} fullName={h.fullName} initials={h.initials}
             isActive={h.isActive} companyLabel={h.companyLabel} departmentLabel={h.departmentLabel}
@@ -392,15 +398,18 @@ export default function ProfileView() {
             copyToClipboard={h.copyToClipboard}
           />
         </Col>
-        <Col lg={8}>
+        <Col lg={6} style={{ flex: "0 0 50%", maxWidth: "50%" }}>
           <ProfileSummaryCard
             profile={h.profile} companyLabel={h.companyLabel} departmentLabel={h.departmentLabel}
-            roleGroupsByApp={h.roleGroupsByApp} requestUpdateHref={h.requestUpdateHref}
+            requestUpdateHref={h.requestUpdateHref}
             copyToClipboard={h.copyToClipboard}
           />
           <ProfileRequestCard
             requestUpdateHref={h.requestUpdateHref} openPasswordModal={h.openPasswordModal}
           />
+        </Col>
+        <Col lg={2} style={{ flex: "0 0 20%", maxWidth: "20%" }}>
+          <ProfileRolesCard roleGroupsByApp={h.roleGroupsByApp} />
         </Col>
       </Row>
 

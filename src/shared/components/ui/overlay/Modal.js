@@ -14,7 +14,7 @@ export default function Modal({
   const mergedBodyClassName = ["psb-ui-modal-body", bodyClassName].filter(Boolean).join(" ");
 
   return (
-    <BootstrapModal show={show} onHide={onHide} centered {...props}>
+    <BootstrapModal show={show} onHide={onHide} centered style={{ zIndex: 9999 }} {...props}>
       {title ? (
         <BootstrapModal.Header closeButton>
           <BootstrapModal.Title>{title}</BootstrapModal.Title>

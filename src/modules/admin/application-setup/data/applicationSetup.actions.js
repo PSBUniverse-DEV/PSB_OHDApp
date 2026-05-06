@@ -25,6 +25,14 @@ function normalizeBoolean(value) {
   return !(text === "false" || text === "0" || text === "n" || text === "no" || text === "f");
 }
 
+const PROTECTED_APP_NAMES = ["PSBUNIVERSE"];
+
+async function isProtectedApp(supabase, appId) {
+  const { data } = await supabase.from("psb_s_application").select("app_name").eq("app_id", appId).maybeSingle();
+  const name = normalizeText(data?.app_name).toUpperCase();
+  return PROTECTED_APP_NAMES.includes(name);
+}
+
 const ORDER_FIELD_CANDIDATES = ["display_order", "app_order", "sort_order", "order_no"];
 
 function resolveOrderField(applications) {
@@ -96,6 +104,7 @@ export async function createApplicationAction(payload) {
 
 export async function updateApplicationAction(appId, updates) {
   const supabase = getSupabaseAdmin();
+  if (await isProtectedApp(supabase, appId)) return null;
   const payload = {};
   if (hasOwn(updates, "app_name")) {
     const name = normalizeText(updates.app_name);
@@ -114,6 +123,7 @@ export async function updateApplicationAction(appId, updates) {
 
 export async function deactivateApplicationAction(appId) {
   const supabase = getSupabaseAdmin();
+  if (await isProtectedApp(supabase, appId)) return { appId, deactivated: false };
   // Cascade deactivate roles
   const { data: roles } = await supabase.from("psb_s_role").select("role_id").eq("app_id", appId);
   for (const role of roles || []) {
@@ -126,6 +136,7 @@ export async function deactivateApplicationAction(appId) {
 
 export async function hardDeleteApplicationAction(appId) {
   const supabase = getSupabaseAdmin();
+  if (await isProtectedApp(supabase, appId)) return { appId, permanentlyDeleted: false };
   // Cascade delete roles
   const { data: roles } = await supabase.from("psb_s_role").select("role_id").eq("app_id", appId);
   for (const role of roles || []) {

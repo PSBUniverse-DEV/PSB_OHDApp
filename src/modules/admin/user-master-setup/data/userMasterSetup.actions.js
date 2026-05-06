@@ -490,7 +490,7 @@ export async function createUserAction(payload) {
   }
 
   if (authRes.authUserId) {
-    await syncAuthUserFromPayload(supabase, authRes.authUserId, { ...createPayload, password: pw }, { syncPassword: true }).catch(() => {});
+    await syncAuthUserFromPayload(supabase, authRes.authUserId, { ...createPayload, password: pw }, { syncPassword: true });
   }
 
   const lookupData = await loadLookupData(supabase);
@@ -537,7 +537,7 @@ export async function updateUserAction(userId, updates) {
   if (resolvedAuthId) {
     const syncPayload = { ...existing, ...updatePayload, ...updated };
     if (pw) syncPayload.password = pw;
-    await syncAuthUserFromPayload(supabase, resolvedAuthId, syncPayload, { syncPassword: Boolean(pw) }).catch(() => {});
+    await syncAuthUserFromPayload(supabase, resolvedAuthId, syncPayload, { syncPassword: Boolean(pw) });
   }
 
   const lookupData = await loadLookupData(supabase);
@@ -555,7 +555,7 @@ export async function deleteUserAction(userId) {
   if (error) throw new Error(error.message || "Failed to deactivate user.");
   const resolvedAuthId = normalizeText(updated?.auth_user_id);
   if (resolvedAuthId) {
-    await syncAuthUserFromPayload(supabase, resolvedAuthId, { ...updated, is_active: false }, { syncPassword: false }).catch(() => {});
+    await syncAuthUserFromPayload(supabase, resolvedAuthId, { ...updated, is_active: false }, { syncPassword: false });
   }
   return { revokedAccessCount: ensureArray(revokedRows).length };
 }
