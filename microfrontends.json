@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/microfrontends.json",
+  "applications": {
+    "psbuniverse_dev": {
+      "development": {
+        "fallback": "psbuniverse-dev.vercel.app"
+      }
+    },
+    "psb-metal-buildings-app": {
+      "routing": [
+        {
+          "group":"psb-metal-buildings-app", 
+          "paths": [
+            "/metal-buildings",
+            "/metal-buildings/:path*"
+        
+        ]
+        }
+      ]
+    }
+  }
+}
