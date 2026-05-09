@@ -11,13 +11,15 @@ export default function InlineEditCell({
   type = "text",
 }) {
   const [draft, setDraft] = useState(String(value ?? ""));
+  const [prevValue, setPrevValue] = useState(value);
   const inputRef = useRef(null);
   const prevDisabledRef = useRef(disabled);
 
   // Sync draft when value changes externally (e.g. after save).
-  useEffect(() => {
+  if (value !== prevValue) {
+    setPrevValue(value);
     setDraft(String(value ?? ""));
-  }, [value]);
+  }
 
   // Auto-focus the first input in the row when transitioning from disabled→enabled.
   useEffect(() => {
