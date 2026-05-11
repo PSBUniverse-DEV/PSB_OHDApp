@@ -20,6 +20,20 @@
           ]
         }
       ]
+    },
+    "psb-gutter-app": {
+      "development": {
+        "fallback": "psb-gutter-app.vercel.app"
+      },
+      "routing": [
+        {
+          "group": "psb-gutter-app",
+          "paths": [
+            "/gutter",
+            "/gutter/:path*"
+          ]
+        }
+      ]
     }
   }
 }
