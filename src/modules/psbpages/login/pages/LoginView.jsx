@@ -44,6 +44,22 @@ function useLogin() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       setAccessTokenCookie(data?.session);
+
+      // Create SSO session — calls POST /api/auth/login to generate JWT + set psb_session cookie
+      if (data?.session?.access_token) {
+        const ssoResponse = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: data.session.access_token }),
+        });
+
+        if (!ssoResponse.ok) {
+          const ssoError = await ssoResponse.json().catch(() => ({}));
+          console.error("SSO session creation failed:", ssoError);
+          // Continue anyway — the sb-access-token cookie may still work for the current flow
+        }
+      }
+
       await waitForServerSession();
       toastSuccess("Welcome to PSBUniverse. You have signed in successfully.", "Sign In Success");
       window.location.assign("/dashboard");
