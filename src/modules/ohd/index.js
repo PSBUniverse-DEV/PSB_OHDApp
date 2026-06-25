@@ -56,7 +56,7 @@
  */
 const ohdModule = {
   key: "ohd",
-  module_key: "psbuniverse",          // ← change to your app key from Application Setup
+  module_key: "ohd-app",          // ← change to your app key from Application Setup
   name: "Ohd",
   description: "TODO: Describe what this module does.",
   icon: "box",                        // ← pick from https://fontawesome.com/search?o=r&m=free
@@ -65,6 +65,7 @@ const ohdModule = {
   order: 200,                         // ← adjust to control sidebar position
   routes: [
     { path: "/ohd", page: "OhdPage" },
+    { path: "/ohd/setup", page: "OhdSetupPage" },
   ],
 };
 
