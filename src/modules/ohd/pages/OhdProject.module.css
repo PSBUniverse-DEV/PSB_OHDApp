@@ -1,0 +1,392 @@
+/* ─── OHD Project Page — SaaS Operational Layout ─── */
+
+.ohdProjectPage {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 6px 24px;
+}
+
+/* ─── Compact Top Header ─── */
+
+.ohdHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 10px;
+  margin-bottom: 6px;
+  background: var(--psb-surface);
+  border: 1px solid var(--psb-border);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.ohdHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.ohdBackLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--psb-border);
+  color: var(--psb-text);
+  text-decoration: none;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.ohdBackLink:hover {
+  background: var(--psb-bg);
+}
+
+.ohdHeaderTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ohdTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--psb-ink);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ohdSubtitle {
+  font-size: 11px;
+  color: var(--psb-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ohdHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 10px;
+  border-left: 1px solid var(--psb-border);
+  flex-wrap: wrap;
+}
+
+.ohdMetaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ohdMetaLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--psb-muted);
+}
+
+.ohdMetaValue {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--psb-text);
+}
+
+.ohdHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* ─── Workspace Body — Two Column ─── */
+
+.ohdBody {
+  display: grid;
+  grid-template-columns: 1fr 460px;
+  gap: 10px;
+  align-items: start;
+}
+
+/* ─── Main Content Area ─── */
+
+.ohdMain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ─── Sidebar ─── */
+
+.ohdSidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ─── Section Cards ─── */
+
+.ohdSection {
+  background: var(--psb-surface);
+  border: 1px solid var(--psb-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ohdSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--psb-muted);
+  background: var(--psb-bg);
+  border-bottom: 1px solid var(--psb-border);
+}
+
+.ohdSectionCount {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--psb-muted);
+  text-transform: none;
+}
+
+.ohdSectionAction {
+  margin-left: 8px;
+}
+
+.ohdSectionBody {
+  padding: 6px;
+}
+
+/* ─── Form Labels ─── */
+
+.ohdFormLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--psb-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 1px;
+  line-height: 1.2;
+}
+
+/* ─── Section Input Cards ─── */
+
+.ohdSectionCard {
+  background: #fafcfe;
+  border: 1px solid var(--psb-border);
+  border-radius: 6px;
+  padding: 5px 6px;
+}
+
+.ohdSectionCard + .ohdSectionCard {
+  margin-top: 4px;
+}
+
+.ohdSectionCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.ohdSectionCardTitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--psb-brand);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ─── Toggle Block ─── */
+
+.ohdToggleBlock {
+  margin-bottom: 6px;
+}
+
+/* ─── Compact form controls scoped to this page ─── */
+
+.ohdProjectPage :global(.ohd-field-control) {
+  min-height: 26px !important;
+  height: 26px !important;
+  padding: 0.1rem 0.35rem !important;
+  font-size: 11px !important;
+}
+
+.ohdProjectPage :global(textarea.ohd-field-control) {
+  min-height: 40px !important;
+  height: auto !important;
+}
+
+.ohdProjectPage :global(.form-control),
+.ohdProjectPage :global(.form-select) {
+  min-height: 26px !important;
+  height: 26px !important;
+  padding: 0.1rem 0.35rem !important;
+  font-size: 11px !important;
+}
+
+.ohdProjectPage :global(textarea.form-control) {
+  min-height: 40px !important;
+  height: auto !important;
+}
+
+.ohdProjectPage :global(.form-check-input) {
+  width: 1.6em;
+  height: 0.95em;
+}
+
+.ohdProjectPage :global(.additionals-toggle-label) {
+  font-size: 12px;
+  min-height: 24px;
+}
+
+.ohdProjectPage :global(.additionals-toggle-include) {
+  min-height: 28px;
+}
+
+/* ─── Quote Preview Styles ─── */
+
+.ohdProjectPage :global(.ohd-quote-document) {
+  font-size: 0.82rem;
+}
+
+.ohdProjectPage :global(.ohd-quote-detail-stack) {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ohdProjectPage :global(.ohd-quote-detail-row) {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+
+.ohdProjectPage :global(.ohd-quote-detail-label) {
+  color: #6b7c8b;
+  font-weight: 500;
+}
+
+.ohdProjectPage :global(.ohd-quote-detail-value) {
+  font-weight: 600;
+  text-align: right;
+}
+
+.ohdProjectPage :global(.ohd-price-row) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+  font-size: 0.8rem;
+}
+
+.ohdProjectPage :global(.ohd-price-value) {
+  text-align: right;
+  font-weight: 500;
+}
+
+.ohdProjectPage :global(.ohd-price-divider) {
+  border-top: 1px solid var(--psb-border);
+  margin: 4px 0;
+}
+
+.ohdProjectPage :global(.ohd-price-total) {
+  font-size: 0.95rem;
+}
+
+.ohdProjectPage :global(.ohd-price-balance) {
+  border-top: 1px solid var(--psb-border);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+.ohdProjectPage :global(.ohd-quote-table) {
+  width: 100%;
+  font-size: 0.7rem;
+  border-collapse: collapse;
+}
+
+.ohdProjectPage :global(.ohd-quote-table th),
+.ohdProjectPage :global(.ohd-quote-table td) {
+  padding: 2px 3px;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.ohdProjectPage :global(.ohd-quote-table thead th) {
+  color: #6b7c8b;
+  font-weight: 600;
+  border-bottom: 1px solid var(--psb-border);
+}
+
+.ohdProjectPage :global(.ohd-quote-table tbody td) {
+  border-bottom: 1px solid #eee;
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 1100px) {
+  .ohdBody {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .ohdProjectPage {
+    padding: 8px 12px;
+  }
+
+  .ohdHeaderMeta {
+    border-left: none;
+    padding-left: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--psb-border);
+    width: 100%;
+  }
+}
+
+/* ─── Print Styles ─── */
+
+@media print {
+  .ohdHeader {
+    display: none;
+  }
+
+  .ohdBody {
+    display: block;
+  }
+
+  .ohdMain {
+    display: none;
+  }
+
+  .ohdSidebar {
+    width: 100%;
+  }
+
+  .ohdSection {
+    break-inside: avoid;
+    border: none;
+    box-shadow: none;
+  }
+
+  .ohdProjectPage {
+    padding: 0;
+    max-width: none;
+  }
+}
