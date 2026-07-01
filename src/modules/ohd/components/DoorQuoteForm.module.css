@@ -1,0 +1,102 @@
+/* ─── Door Quote Form — Compact Grid Rows ─── */
+
+.doorForm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr 140px;
+  gap: 8px;
+  align-items: end;
+}
+
+.formRowOpener {
+  display: grid;
+  grid-template-columns: 80px 1fr 140px;
+  gap: 8px;
+  align-items: end;
+}
+
+.formRowWindows {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr;
+  gap: 8px;
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fieldLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--psb-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+}
+
+.fieldValue {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--psb-text);
+  padding: 0.1rem 0.35rem;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  background: #f8f9fb;
+  border: 1px solid var(--psb-border);
+  border-radius: 4px;
+}
+
+/* ─── Compact door card ─── */
+
+.doorCard {
+  background: #fafcfe;
+  border: 1px solid var(--psb-border);
+  border-radius: 6px;
+  padding: 5px 6px;
+}
+
+.doorCard + .doorCard {
+  margin-top: 4px;
+}
+
+.doorCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.doorCardTitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--psb-brand);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ─── Color field group (percent + name) ─── */
+
+.colorGroup {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 4px;
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 768px) {
+  .formRow,
+  .formRowOpener,
+  .formRowWindows {
+    grid-template-columns: 1fr;
+  }
+}

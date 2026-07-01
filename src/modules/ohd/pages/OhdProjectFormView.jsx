@@ -16,6 +16,12 @@ import {
   createInitialProject, emptyDoorItem, emptyExtra, mapHeaderToProject,
   calculateOhdQuote, formatCurrency
 } from "../data/ohdProjectForm.data";
+import DimensionRow from "../components/DimensionRow";
+import DoorStyleRow from "../components/DoorStyleRow";
+import InsulationRow from "../components/InsulationRow";
+import OpenerRow from "../components/OpenerRow";
+import WindowRow from "../components/WindowRow";
+import doorFormStyles from "../components/DoorQuoteForm.module.css";
 import styles from "./OhdProject.module.css";
 
 const MIN_ITEMS = 1;
@@ -345,88 +351,18 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
             </div>
             <div className={styles.ohdSectionBody}>
               {(project.items || []).map((item, i) => (
-                <div key={i} className={styles.ohdSectionCard}>
-                  <div className={styles.ohdSectionCardHeader}>
-                    <span className={styles.ohdSectionCardTitle}>Door {i + 1}</span>
+                <div key={i} className={doorFormStyles.doorCard}>
+                  <div className={doorFormStyles.doorCardHeader}>
+                    <span className={doorFormStyles.doorCardTitle}>Door {i + 1}</span>
                     <Button variant="secondary" disabled={(project.items || []).length <= MIN_ITEMS} onClick={() => removeItem(i)}>Remove</Button>
                   </div>
-                  <Row className="g-2">
-                    <Col md={3}>
-                      <Form.Group>
-                        <Form.Label className={styles.ohdFormLabel}>Qty</Form.Label>
-                        <Form.Control className="ohd-field-control" type="number" min="1" step="1" value={item.quantity || ""} onChange={(e) => updateItem(i, "quantity", e.target.value)} />
-                      </Form.Group>
-                    </Col>
-                    <Col md={3}>
-                      <Form.Group>
-                        <Form.Label className={styles.ohdFormLabel}>Width (in)</Form.Label>
-                        <Form.Control className="ohd-field-control" type="number" step="0.01" value={item.width || ""} onChange={(e) => updateItem(i, "width", e.target.value)} />
-                      </Form.Group>
-                    </Col>
-                    <Col md={3}>
-                      <Form.Group>
-                        <Form.Label className={styles.ohdFormLabel}>Height (in)</Form.Label>
-                        <Form.Control className="ohd-field-control" type="number" step="0.01" value={item.height || ""} onChange={(e) => updateItem(i, "height", e.target.value)} />
-                      </Form.Group>
-                    </Col>
-                    <Col md={3}>
-                      <Form.Group>
-                        <Form.Label className={styles.ohdFormLabel}>Color</Form.Label>
-                        <Form.Select className="ohd-field-control" value={item.color_id || ""} onChange={(e) => updateItem(i, "color_id", e.target.value)}>
-                          <option value="">Select...</option>
-                          {colors.map((c) => <option key={c.color_id} value={String(c.color_id)}>{c.color_name}</option>)}
-                        </Form.Select>
-                      </Form.Group>
-                    </Col>
-                    <Col md={3}>
-                      <Form.Group>
-                        <Form.Label className={styles.ohdFormLabel}>Pane Style</Form.Label>
-                        <Form.Select className="ohd-field-control" value={item.pane_style_id || ""} onChange={(e) => updateItem(i, "pane_style_id", e.target.value)}>
-                          <option value="">Select...</option>
-                          {paneStyles.map((p) => <option key={p.pane_style_id} value={String(p.pane_style_id)}>{p.style_name}</option>)}
-                        </Form.Select>
-                      </Form.Group>
-                    </Col>
-                    <Col md={3}>
-                      <Form.Group>
-                        <Form.Label className={styles.ohdFormLabel}>Insulation</Form.Label>
-                        <Form.Select className="ohd-field-control" value={item.ins_type_id || ""} onChange={(e) => updateItem(i, "ins_type_id", e.target.value)}>
-                          <option value="">Select...</option>
-                          {insulationTypes.map((t) => <option key={t.ins_type_id} value={String(t.ins_type_id)}>{t.type_name}</option>)}
-                        </Form.Select>
-                      </Form.Group>
-                    </Col>
-                    <Col md={3}>
-                      <Form.Group>
-                        <Form.Label className={styles.ohdFormLabel}>Opener</Form.Label>
-                        <Form.Select className="ohd-field-control" value={item.opener_id || ""} onChange={(e) => updateItem(i, "opener_id", e.target.value)}>
-                          <option value="">Select...</option>
-                          {openers.map((o) => <option key={o.opener_id} value={String(o.opener_id)}>{o.opener_name}</option>)}
-                        </Form.Select>
-                      </Form.Group>
-                    </Col>
-                    <Col md={3}>
-                      <Form.Group>
-                        <Form.Label className={styles.ohdFormLabel}>Opener Qty</Form.Label>
-                        <Form.Control className="ohd-field-control" type="number" min="0" step="1" value={item.opener_quantity || ""} onChange={(e) => updateItem(i, "opener_quantity", e.target.value)} />
-                      </Form.Group>
-                    </Col>
-                    <Col md={3}>
-                      <Form.Group>
-                        <Form.Label className={styles.ohdFormLabel}>Window Type</Form.Label>
-                        <Form.Select className="ohd-field-control" value={item.windows_type_id || ""} onChange={(e) => updateItem(i, "windows_type_id", e.target.value)}>
-                          <option value="">Select...</option>
-                          {windowTypes.map((w) => <option key={w.windows_type_id} value={String(w.windows_type_id)}>{w.windows_type}</option>)}
-                        </Form.Select>
-                      </Form.Group>
-                    </Col>
-                    <Col md={3}>
-                      <Form.Group>
-                        <Form.Label className={styles.ohdFormLabel}>Window Qty</Form.Label>
-                        <Form.Control className="ohd-field-control" type="number" min="0" step="1" value={item.windows_quantity || ""} onChange={(e) => updateItem(i, "windows_quantity", e.target.value)} />
-                      </Form.Group>
-                    </Col>
-                  </Row>
+                  <div className={doorFormStyles.doorForm}>
+                    <DimensionRow item={item} index={i} onUpdate={updateItem} />
+                    <DoorStyleRow item={item} index={i} onUpdate={updateItem} paneStyles={paneStyles} colors={colors} />
+                    <InsulationRow item={item} index={i} onUpdate={updateItem} insulationTypes={insulationTypes} />
+                    <OpenerRow item={item} index={i} onUpdate={updateItem} openers={openers} />
+                    <WindowRow item={item} index={i} onUpdate={updateItem} windowTypes={windowTypes} />
+                  </div>
                 </div>
               ))}
             </div>
