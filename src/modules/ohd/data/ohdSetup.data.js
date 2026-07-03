@@ -63,8 +63,6 @@ export const TABLE_DEFS = [
       { key: "price_premium_color", label: "Premium Color Price", type: "number", step: "0.01" },
       { key: "wood_grain_color_add_on", label: "Wood Grain Add-on", type: "number", step: "0.01" },
       { key: "price_wood_grain_color", label: "Wood Grain Price", type: "number", step: "0.01" },
-      { key: "track_name", label: "Track Name" },
-      { key: "track_price", label: "Track Price", type: "number", step: "0.01" },
     ],
   },
   {

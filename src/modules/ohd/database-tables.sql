@@ -18,8 +18,6 @@ create table public.ohd_s_insulation_type (
   price_premium_color numeric(18, 2) null,
   wood_grain_color_add_on numeric(18, 2) null,
   price_wood_grain_color numeric(18, 2) null,
-  track_name character varying(100) null,
-  track_price numeric(18, 2) null,
   constraint ohd_s_insulation_type_pkey primary key (ins_type_id)
 ) TABLESPACE pg_default;
 
