@@ -3,7 +3,7 @@
 import { Form } from "react-bootstrap";
 import styles from "./DoorQuoteForm.module.css";
 
-export default function InsulationRow({ item, index, onUpdate, insulationTypes }) {
+export default function InsulationRow({ item, index, onUpdate, insulationTypes, trackOptions }) {
   return (
     <div className={styles.formRow}>
       <div className={styles.field}>
@@ -27,8 +27,17 @@ export default function InsulationRow({ item, index, onUpdate, insulationTypes }
       </div>
       <div className={styles.field}>
         <label className={styles.fieldLabel}>Track Option</label>
-        <Form.Select className="ohd-field-control">
+        <Form.Select
+          className="ohd-field-control"
+          value={item.track_id || ""}
+          onChange={(e) => onUpdate(index, "track_id", e.target.value)}
+        >
           <option value="">Select...</option>
+          {(trackOptions || []).map((t) => (
+            <option key={t.track_id} value={String(t.track_id)}>
+              {t.track_name} (${Number(t.track_price || 0).toFixed(2)})
+            </option>
+          ))}
         </Form.Select>
       </div>
       <div className={styles.field}>

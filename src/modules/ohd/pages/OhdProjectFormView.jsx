@@ -38,6 +38,7 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
   const insulationTypes = useMemo(() => Array.isArray(setup.insulationTypes) ? setup.insulationTypes : [], [setup.insulationTypes]);
   const openers = useMemo(() => Array.isArray(setup.openers) ? setup.openers : [], [setup.openers]);
   const windowTypes = useMemo(() => Array.isArray(setup.windowTypes) ? setup.windowTypes : [], [setup.windowTypes]);
+  const trackOptions = useMemo(() => Array.isArray(setup.trackOptions) ? setup.trackOptions : [], [setup.trackOptions]);
 
   // ─── Warnings ──────────────────────────────────────────
   useEffect(() => {
@@ -192,6 +193,7 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
           ins_type_id: toIntOrNull(i.ins_type_id),
           opener_id: toIntOrNull(i.opener_id),
           windows_type_id: toIntOrNull(i.windows_type_id),
+          track_id: toIntOrNull(i.track_id),
           opener_quantity: toIntOrNull(i.opener_quantity),
           windows_quantity: toIntOrNull(i.windows_quantity),
         };
@@ -359,7 +361,7 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                   <div className={doorFormStyles.doorForm}>
                     <DimensionRow item={item} index={i} onUpdate={updateItem} />
                     <DoorStyleRow item={item} index={i} onUpdate={updateItem} paneStyles={paneStyles} colors={colors} />
-                    <InsulationRow item={item} index={i} onUpdate={updateItem} insulationTypes={insulationTypes} />
+                    <InsulationRow item={item} index={i} onUpdate={updateItem} insulationTypes={insulationTypes} trackOptions={trackOptions} />
                     <OpenerRow item={item} index={i} onUpdate={updateItem} openers={openers} />
                     <WindowRow item={item} index={i} onUpdate={updateItem} windowTypes={windowTypes} />
                   </div>

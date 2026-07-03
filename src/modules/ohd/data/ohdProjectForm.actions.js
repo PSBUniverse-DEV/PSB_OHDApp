@@ -33,6 +33,7 @@ export async function loadOhdFormSetup() {
     openers:         supabase.from("ohd_s_openers").select("*").order("opener_id"),
     tripRates:       supabase.from("ohd_s_trip_rates").select("*").order("trip_id"),
     windowTypes:     supabase.from("ohd_s_windows_type").select("*").order("windows_type_id"),
+    trackOptions:    supabase.from("ohd_s_track_options").select("*").order("track_id"),
   };
 
   const keys = Object.keys(queries);
@@ -141,6 +142,7 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
       const insTypeId = toIntOrNull(row.ins_type_id);
       const openerId = toIntOrNull(row.opener_id);
       const windowsTypeId = toIntOrNull(row.windows_type_id);
+      const trackId = toIntOrNull(row.track_id);
       const openerQty = toIntOrNull(row.opener_quantity);
       const windowsQty = toIntOrNull(row.windows_quantity);
       if (qty === null && width === null && height === null) return null;
@@ -154,6 +156,7 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
         ins_type_id: insTypeId,
         opener_id: openerId,
         windows_type_id: windowsTypeId,
+        track_id: trackId,
         opener_quantity: openerQty,
         windows_quantity: windowsQty,
       };
