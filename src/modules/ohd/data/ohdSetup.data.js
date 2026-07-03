@@ -94,6 +94,19 @@ export const TABLE_DEFS = [
     ],
   },
   {
+    key: "trackOptions",
+    label: "Track Options",
+    pk: "track_id",
+    columns: [
+      { key: "track_name", label: "Track Name", sortable: true },
+      { key: "track_price", label: "Price", sortable: true, render: (row) => `$${Number(row.track_price || 0).toFixed(2)}` },
+    ],
+    fields: [
+      { key: "track_name", label: "Track Name", required: true },
+      { key: "track_price", label: "Price", type: "number", step: "0.01", required: true },
+    ],
+  },
+  {
     key: "windowTypes",
     label: "Window Types",
     pk: "windows_type_id",

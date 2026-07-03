@@ -11,6 +11,7 @@ const SETUP_TABLES = {
   insulationTypes: { table: "ohd_s_insulation_type", pk: "ins_type_id" },
   openers:         { table: "ohd_s_openers",         pk: "opener_id" },
   tripRates:       { table: "ohd_s_trip_rates",      pk: "trip_id" },
+  trackOptions:    { table: "ohd_s_track_options",   pk: "track_id" },
   windowTypes:     { table: "ohd_s_windows_type",    pk: "windows_type_id" },
 };
 
@@ -32,6 +33,7 @@ export async function loadOhdSetup() {
     insulationTypes: supabase.from("ohd_s_insulation_type").select("*").order("ins_type_id"),
     openers:         supabase.from("ohd_s_openers").select("*").order("opener_id"),
     tripRates:       supabase.from("ohd_s_trip_rates").select("*").order("trip_id"),
+    trackOptions:    supabase.from("ohd_s_track_options").select("*").order("track_id"),
     windowTypes:     supabase.from("ohd_s_windows_type").select("*").order("windows_type_id"),
   };
 

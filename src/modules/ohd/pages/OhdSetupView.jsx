@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faTable, faPalette, faDoorOpen, faLayerGroup, faGear, faTruck, faWindowMaximize,
-  faPlus, faMagnifyingGlass,
+  faRulerCombined, faPlus, faMagnifyingGlass,
 } from "@fortawesome/free-solid-svg-icons";
 import { Form } from "react-bootstrap";
 import { Button, Modal, TableZ, toastError, toastSuccess } from "@/shared/components/ui";
@@ -23,6 +23,7 @@ const SIDEBAR_ICONS = {
   openers:         faGear,
   tripRates:       faTruck,
   windowTypes:     faWindowMaximize,
+  trackOptions:    faRulerCombined,
 };
 
 // ─── Sidebar ────────────────────────────────────────────────
