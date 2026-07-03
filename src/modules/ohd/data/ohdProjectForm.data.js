@@ -21,6 +21,11 @@ export function emptyDoorItem() {
     track_id: "",
     header_seal: "",
     multiplier: "",
+    dimension_price: "",
+    pane_style_price: "",
+    insulation_price: "",
+    windows_price: "",
+    item_total: "",
   };
 }
 
@@ -68,6 +73,11 @@ export function mapHeaderToProject(header, items) {
     track_id: i.track_id ? String(i.track_id) : "",
     header_seal: i.header_seal != null ? String(i.header_seal) : "",
     multiplier: i.multiplier != null ? String(i.multiplier) : "",
+    dimension_price: i.dimension_price != null ? String(i.dimension_price) : "",
+    pane_style_price: i.pane_style_price != null ? String(i.pane_style_price) : "",
+    insulation_price: i.insulation_price != null ? String(i.insulation_price) : "",
+    windows_price: i.windows_price != null ? String(i.windows_price) : "",
+    item_total: i.item_total != null ? String(i.item_total) : "",
   }));
 
   const hasDiscount = header.discount != null && Number(header.discount) > 0;
@@ -102,20 +112,68 @@ export function mapHeaderToProject(header, items) {
 // ─── Quote Calculation (stub — will evolve) ────────────────
 
 export function calculateOhdQuote(project, setup) {
-  // For now, just compute a simple estimate based on dimensions
+  // Calculate per-door pricing
   const items = (project.items || []).filter(
     (i) => Number(i.quantity) > 0 || Number(i.width) > 0 || Number(i.height) > 0,
   );
 
-  const subtotal = items.reduce((sum, i) => {
+  const itemResults = items.map((i) => {
     const qty = Number(i.quantity) || 0;
     const w = Number(i.width) || 0;
     const h = Number(i.height) || 0;
     const sqft = w * h;
-    // Placeholder price per sqft
-    const pricePerSqft = 8.0;
-    return sum + qty * sqft * pricePerSqft;
-  }, 0);
+    const headerSeal = Number(i.header_seal) || 0;
+    const multiplier = Number(i.multiplier) || 1;
+
+    // Lookup insulation price per sqft
+    const insTypes = Array.isArray(setup.insulationTypes) ? setup.insulationTypes : [];
+    const selectedIns = i.ins_type_id
+      ? insTypes.find((t) => String(t.ins_type_id) === String(i.ins_type_id))
+      : null;
+    const insPricePerSqft = selectedIns ? Number(selectedIns.price_persqft) || 0 : 0;
+
+    // Lookup track price
+    const trackOpts = Array.isArray(setup.trackOptions) ? setup.trackOptions : [];
+    const selectedTrack = i.track_id
+      ? trackOpts.find((t) => String(t.track_id) === String(i.track_id))
+      : null;
+    const trackPrice = selectedTrack ? Number(selectedTrack.track_price) || 0 : 0;
+
+    // Lookup opener price
+    const openerList = Array.isArray(setup.openers) ? setup.openers : [];
+    const selectedOpener = i.opener_id
+      ? openerList.find((o) => String(o.opener_id) === String(i.opener_id))
+      : null;
+    const openerPrice = selectedOpener ? Number(selectedOpener.opener_price) || 0 : 0;
+    const openerQty = Number(i.opener_quantity) || 0;
+
+    // Lookup window price
+    const winTypes = Array.isArray(setup.windowTypes) ? setup.windowTypes : [];
+    const selectedWin = i.windows_type_id
+      ? winTypes.find((w) => String(w.windows_type_id) === String(i.windows_type_id))
+      : null;
+    const winPrice = selectedWin ? Number(selectedWin.windows_price) || 0 : 0;
+    const winQty = Number(i.windows_quantity) || 0;
+
+    // Calculations
+    const dimensionPrice = qty * sqft * multiplier + headerSeal + trackPrice;
+    const paneStylePrice = 0; // Placeholder — will be calculated from pane style setup
+    const insulationPrice = qty * sqft * insPricePerSqft;
+    const windowsPrice = winQty * winPrice;
+    const openerTotal = openerQty * openerPrice;
+    const itemTotal = dimensionPrice + paneStylePrice + insulationPrice + windowsPrice + openerTotal;
+
+    return {
+      quantity: qty,
+      dimension_price: dimensionPrice,
+      pane_style_price: paneStylePrice,
+      insulation_price: insulationPrice,
+      windows_price: windowsPrice,
+      item_total: itemTotal,
+    };
+  });
+
+  const subtotal = itemResults.reduce((sum, r) => sum + r.item_total, 0);
 
   // Trip fee
   const tripRates = Array.isArray(setup.tripRates) ? setup.tripRates : [];
@@ -135,6 +193,7 @@ export function calculateOhdQuote(project, setup) {
   const remainingBalance = projectTotal - depositAmount;
 
   return {
+    itemResults,
     pricing: {
       subtotal,
       tripFee,

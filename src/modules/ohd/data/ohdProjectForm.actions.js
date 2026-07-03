@@ -145,6 +145,11 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
       const trackId = toIntOrNull(row.track_id);
       const headerSeal = toNumOrNull(row.header_seal);
       const mult = toIntOrNull(row.multiplier);
+      const dimensionPrice = toNumOrNull(row.dimension_price);
+      const paneStylePrice = toNumOrNull(row.pane_style_price);
+      const insulationPrice = toNumOrNull(row.insulation_price);
+      const windowsPrice = toNumOrNull(row.windows_price);
+      const itemTotal = toNumOrNull(row.item_total);
       const openerQty = toIntOrNull(row.opener_quantity);
       const windowsQty = toIntOrNull(row.windows_quantity);
       if (qty === null && width === null && height === null) return null;
@@ -161,6 +166,11 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
         track_id: trackId,
         header_seal: headerSeal,
         multiplier: mult,
+        dimension_price: dimensionPrice,
+        pane_style_price: paneStylePrice,
+        insulation_price: insulationPrice,
+        windows_price: windowsPrice,
+        item_total: itemTotal,
         opener_quantity: openerQty,
         windows_quantity: windowsQty,
       };

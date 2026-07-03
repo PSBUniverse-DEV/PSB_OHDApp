@@ -179,11 +179,13 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
         price_overall_total: overallTotal,
       };
 
-      const itemRows = (project.items || []).map((i) => {
+      const calcResults = quoteResult?.itemResults || [];
+      const itemRows = (project.items || []).map((i, idx) => {
         const qty = toIntOrNull(i.quantity);
         const w = toNumOrNull(i.width);
         const h = toNumOrNull(i.height);
         if (qty === null && w === null && h === null) return null;
+        const calc = calcResults[idx] || {};
         return {
           quantity: qty,
           width: w,
@@ -196,6 +198,11 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
           track_id: toIntOrNull(i.track_id),
           header_seal: toNumOrNull(i.header_seal),
           multiplier: toIntOrNull(i.multiplier),
+          dimension_price: toNumOrNull(calc.dimension_price),
+          pane_style_price: toNumOrNull(calc.pane_style_price),
+          insulation_price: toNumOrNull(calc.insulation_price),
+          windows_price: toNumOrNull(calc.windows_price),
+          item_total: toNumOrNull(calc.item_total),
           opener_quantity: toIntOrNull(i.opener_quantity),
           windows_quantity: toIntOrNull(i.windows_quantity),
         };

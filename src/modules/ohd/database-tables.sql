@@ -107,6 +107,11 @@ create table public.ohd_t_project_items (
   windows_quantity integer null,
   header_seal numeric(18, 2) null,
   multiplier integer null default 1,
+  dimension_price numeric(18, 2) null,
+  pane_style_price numeric(18, 2) null,
+  insulation_price numeric(18, 2) null,
+  windows_price numeric(18, 2) null,
+  item_total numeric(18, 2) null,
   constraint ohd_t_project_items_pkey primary key (item_id),
   constraint fk_ohd_item_project foreign key (proj_id) references ohd_t_projects (proj_id)
 ) TABLESPACE pg_default;
@@ -165,6 +170,10 @@ create table public.ohd_t_project_snapshot (
   snapshot_version character varying(100) null,
   header_seal numeric(18, 2) null,
   multiplier integer null default 1,
+  dimension_price numeric(18, 2) null,
+  pane_style_price numeric(18, 2) null,
+  insulation_price numeric(18, 2) null,
+  windows_price numeric(18, 2) null,
   constraint ohd_t_project_snapshot_pkey primary key (project_snapshot_id)
 ) TABLESPACE pg_default;
 
