@@ -69,10 +69,6 @@ export default function DimensionRow({ item, index, onUpdate }) {
           onChange={(e) => onUpdate(index, "multiplier", e.target.value)}
         />
       </div>
-      <div className={styles.field}>
-        <label className={styles.fieldLabel}>Price</label>
-        <div className={styles.fieldValue}>—</div>
-      </div>
     </div>
   );
 }

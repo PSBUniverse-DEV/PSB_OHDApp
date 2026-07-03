@@ -517,11 +517,34 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                     </div>
                   </div>
 
-                  {/* Door Items Breakdown */}
+                  {/* Per-Door Pricing Breakdown */}
+                  {(project.items || []).some((i) => Number(i.quantity) > 0 || Number(i.width) > 0) && (
+                    <div style={{ marginBottom: 16 }}>
+                      <h6 className="mb-2 fw-semibold" style={{ fontSize: "0.78rem" }}>Per-Door Pricing</h6>
+                      {(project.items || []).map((item, i) => {
+                        if (!Number(item.quantity) && !Number(item.width)) return null;
+                        const calc = (quoteResult?.itemResults || [])[i] || {};
+                        return (
+                          <div key={i} style={{ marginBottom: 8, padding: "6px 8px", background: "#f8f9fb", borderRadius: 4, border: "1px solid #eee" }}>
+                            <div className="fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Door {i + 1}</div>
+                            <div style={{ fontSize: "0.72rem", color: "#555", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 12px" }}>
+                              <span>Dimension Price</span><span style={{ textAlign: "right" }}>{fmtCurrency(calc.dimension_price)}</span>
+                              <span>Insulation</span><span style={{ textAlign: "right" }}>{fmtCurrency(calc.insulation_price)}</span>
+                              <span>Windows</span><span style={{ textAlign: "right" }}>{fmtCurrency(calc.windows_price)}</span>
+                              <span>Opener</span><span style={{ textAlign: "right" }}>{fmtCurrency((item.opener_quantity || 0) * (openers.find(o => String(o.opener_id) === String(item.opener_id))?.opener_price || 0))}</span>
+                              <span style={{ fontWeight: 600, borderTop: "1px solid #ddd", paddingTop: 2, marginTop: 2 }}>Door Total</span><span style={{ textAlign: "right", fontWeight: 600, borderTop: "1px solid #ddd", paddingTop: 2, marginTop: 2 }}>{fmtCurrency(calc.item_total)}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Material Breakdown */}
                   {(project.items || []).some((i) => Number(i.quantity) > 0 || Number(i.width) > 0) && (
                     <div>
-                      <h6 className="mb-2 fw-semibold" style={{ fontSize: "0.78rem" }}>Door Items</h6>
-                      <table className="ohd-quote-table">
+                      <h6 className="mb-2 fw-semibold" style={{ fontSize: "0.78rem" }}>Material Breakdown</h6>
+                      <table className="ohd-quote-table" style={{ fontSize: "0.72rem" }}>
                         <thead>
                           <tr>
                             <th>#</th>
@@ -530,12 +553,19 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                             <th>Color</th>
                             <th>Pane</th>
                             <th>Insulation</th>
-                            <th>Opener</th>
+                            <th>Track</th>
+                            <th>H-Seal</th>
+                            <th>R-Seal</th>
+                            <th>Mult</th>
+                            <th style={{ textAlign: "right" }}>Dim Price</th>
+                            <th style={{ textAlign: "right" }}>Ins Price</th>
+                            <th style={{ textAlign: "right" }}>Item Total</th>
                           </tr>
                         </thead>
                         <tbody>
                           {(project.items || []).map((item, i) => {
                             if (!Number(item.quantity) && !Number(item.width)) return null;
+                            const calc = (quoteResult?.itemResults || [])[i] || {};
                             return (
                               <tr key={i}>
                                 <td>{i + 1}</td>
@@ -544,7 +574,13 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                                 <td>{colorNameById[String(item.color_id)] || "—"}</td>
                                 <td>{paneStyleNameById[String(item.pane_style_id)] || "—"}</td>
                                 <td>{insTypeNameById[String(item.ins_type_id)] || "—"}</td>
-                                <td>{item.opener_id ? `${openerNameById[String(item.opener_id)] || "—"} x${item.opener_quantity || 1}` : "—"}</td>
+                                <td>{trackOptions.find(t => String(t.track_id) === String(item.track_id))?.track_name || "—"}</td>
+                                <td>{item.header_seal || "—"}</td>
+                                <td>{item.rev_seal || "—"}</td>
+                                <td>{item.multiplier || "—"}</td>
+                                <td style={{ textAlign: "right" }}>{fmtCurrency(calc.dimension_price)}</td>
+                                <td style={{ textAlign: "right" }}>{fmtCurrency(calc.insulation_price)}</td>
+                                <td style={{ textAlign: "right" }}>{fmtCurrency(calc.item_total)}</td>
                               </tr>
                             );
                           })}

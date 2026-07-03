@@ -15,7 +15,7 @@
 
 .formRowDimension {
   display: grid;
-  grid-template-columns: 50px 60px 60px 70px 60px 60px 100px;
+  grid-template-columns: 50px 60px 60px 70px 60px 60px;
   gap: 6px;
   align-items: end;
 }
