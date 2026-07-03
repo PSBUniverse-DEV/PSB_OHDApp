@@ -168,7 +168,7 @@ export function calculateOhdQuote(project, setup) {
 
     // Calculations — dimension price per formula in database-table-reference.sql
     const raw = (
-      (((w * h) * insPricePerSqFt) * qty) +
+      (((w * h) * insPricePerSqft) * qty) +
       (w * headerSeal) +
       ((revSeal * 2) * h)
     ) / multiplier;
