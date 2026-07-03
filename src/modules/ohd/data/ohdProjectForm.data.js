@@ -19,6 +19,8 @@ export function emptyDoorItem() {
     opener_quantity: "",
     windows_quantity: "",
     track_id: "",
+    header_seal: "",
+    multiplier: "",
   };
 }
 
@@ -64,6 +66,8 @@ export function mapHeaderToProject(header, items) {
     opener_quantity: i.opener_quantity != null ? String(i.opener_quantity) : "",
     windows_quantity: i.windows_quantity != null ? String(i.windows_quantity) : "",
     track_id: i.track_id ? String(i.track_id) : "",
+    header_seal: i.header_seal != null ? String(i.header_seal) : "",
+    multiplier: i.multiplier != null ? String(i.multiplier) : "",
   }));
 
   const hasDiscount = header.discount != null && Number(header.discount) > 0;

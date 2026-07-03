@@ -13,6 +13,13 @@
   align-items: end;
 }
 
+.formRowDimension {
+  display: grid;
+  grid-template-columns: 60px 70px 70px 80px 70px 100px;
+  gap: 8px;
+  align-items: end;
+}
+
 .formRowOpener {
   display: grid;
   grid-template-columns: 80px 1fr 140px;

@@ -194,6 +194,8 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
           opener_id: toIntOrNull(i.opener_id),
           windows_type_id: toIntOrNull(i.windows_type_id),
           track_id: toIntOrNull(i.track_id),
+          header_seal: toNumOrNull(i.header_seal),
+          multiplier: toIntOrNull(i.multiplier),
           opener_quantity: toIntOrNull(i.opener_quantity),
           windows_quantity: toIntOrNull(i.windows_quantity),
         };

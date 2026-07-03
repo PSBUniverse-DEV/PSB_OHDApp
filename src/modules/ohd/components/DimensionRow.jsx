@@ -5,7 +5,7 @@ import styles from "./DoorQuoteForm.module.css";
 
 export default function DimensionRow({ item, index, onUpdate }) {
   return (
-    <div className={styles.formRow}>
+    <div className={styles.formRowDimension}>
       <div className={styles.field}>
         <label className={styles.fieldLabel}>Qty</label>
         <Form.Control
@@ -35,6 +35,27 @@ export default function DimensionRow({ item, index, onUpdate }) {
           step="0.01"
           value={item.height || ""}
           onChange={(e) => onUpdate(index, "height", e.target.value)}
+        />
+      </div>
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Header Seal</label>
+        <Form.Control
+          className="ohd-field-control"
+          type="number"
+          step="0.01"
+          value={item.header_seal || ""}
+          onChange={(e) => onUpdate(index, "header_seal", e.target.value)}
+        />
+      </div>
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Multiplier</label>
+        <Form.Control
+          className="ohd-field-control"
+          type="number"
+          min="1"
+          step="1"
+          value={item.multiplier || ""}
+          onChange={(e) => onUpdate(index, "multiplier", e.target.value)}
         />
       </div>
       <div className={styles.field}>

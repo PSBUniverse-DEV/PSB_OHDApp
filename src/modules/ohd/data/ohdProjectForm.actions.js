@@ -143,6 +143,8 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
       const openerId = toIntOrNull(row.opener_id);
       const windowsTypeId = toIntOrNull(row.windows_type_id);
       const trackId = toIntOrNull(row.track_id);
+      const headerSeal = toNumOrNull(row.header_seal);
+      const mult = toIntOrNull(row.multiplier);
       const openerQty = toIntOrNull(row.opener_quantity);
       const windowsQty = toIntOrNull(row.windows_quantity);
       if (qty === null && width === null && height === null) return null;
@@ -157,6 +159,8 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
         opener_id: openerId,
         windows_type_id: windowsTypeId,
         track_id: trackId,
+        header_seal: headerSeal,
+        multiplier: mult,
         opener_quantity: openerQty,
         windows_quantity: windowsQty,
       };
