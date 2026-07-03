@@ -4,6 +4,14 @@
 
 import { formatCurrency, toPercentLabel } from "./ohdProjects.data";
 
+// ─── Helpers ───────────────────────────────────────────────
+
+/** Round a number to the nearest multiple (e.g. roundToNearest(1296, 5) => 1295) */
+function roundToNearest(value, nearest) {
+  if (!nearest || nearest <= 0) return value;
+  return Math.round(value / nearest) * nearest;
+}
+
 // ─── Defaults ──────────────────────────────────────────────
 
 export function emptyDoorItem() {
@@ -20,6 +28,7 @@ export function emptyDoorItem() {
     windows_quantity: "",
     track_id: "",
     header_seal: "",
+    rev_seal: "",
     multiplier: "",
     dimension_price: "",
     pane_style_price: "",
@@ -72,6 +81,7 @@ export function mapHeaderToProject(header, items) {
     windows_quantity: i.windows_quantity != null ? String(i.windows_quantity) : "",
     track_id: i.track_id ? String(i.track_id) : "",
     header_seal: i.header_seal != null ? String(i.header_seal) : "",
+    rev_seal: i.rev_seal != null ? String(i.rev_seal) : "",
     multiplier: i.multiplier != null ? String(i.multiplier) : "",
     dimension_price: i.dimension_price != null ? String(i.dimension_price) : "",
     pane_style_price: i.pane_style_price != null ? String(i.pane_style_price) : "",
@@ -123,6 +133,7 @@ export function calculateOhdQuote(project, setup) {
     const h = Number(i.height) || 0;
     const sqft = w * h;
     const headerSeal = Number(i.header_seal) || 0;
+    const revSeal = Number(i.rev_seal) || 0;
     const multiplier = Number(i.multiplier) || 1;
 
     // Lookup insulation price per sqft
@@ -155,8 +166,13 @@ export function calculateOhdQuote(project, setup) {
     const winPrice = selectedWin ? Number(selectedWin.windows_price) || 0 : 0;
     const winQty = Number(i.windows_quantity) || 0;
 
-    // Calculations
-    const dimensionPrice = qty * sqft * multiplier + headerSeal + trackPrice;
+    // Calculations — dimension price per formula in database-table-reference.sql
+    const raw = (
+      (((w * h) * insPricePerSqFt) * qty) +
+      (w * headerSeal) +
+      ((revSeal * 2) * h)
+    ) / multiplier;
+    const dimensionPrice = roundToNearest(raw, 5);
     const paneStylePrice = 0; // Placeholder — will be calculated from pane style setup
     const insulationPrice = qty * sqft * insPricePerSqft;
     const windowsPrice = winQty * winPrice;

@@ -144,6 +144,7 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
       const windowsTypeId = toIntOrNull(row.windows_type_id);
       const trackId = toIntOrNull(row.track_id);
       const headerSeal = toNumOrNull(row.header_seal);
+      const revSeal = toIntOrNull(row.rev_seal);
       const mult = toIntOrNull(row.multiplier);
       const dimensionPrice = toNumOrNull(row.dimension_price);
       const paneStylePrice = toNumOrNull(row.pane_style_price);
@@ -165,6 +166,7 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
         windows_type_id: windowsTypeId,
         track_id: trackId,
         header_seal: headerSeal,
+        rev_seal: revSeal,
         multiplier: mult,
         dimension_price: dimensionPrice,
         pane_style_price: paneStylePrice,

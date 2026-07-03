@@ -48,6 +48,17 @@ export default function DimensionRow({ item, index, onUpdate }) {
         />
       </div>
       <div className={styles.field}>
+        <label className={styles.fieldLabel}>Rev Seal</label>
+        <Form.Control
+          className="ohd-field-control"
+          type="number"
+          min="0"
+          step="1"
+          value={item.rev_seal || ""}
+          onChange={(e) => onUpdate(index, "rev_seal", e.target.value)}
+        />
+      </div>
+      <div className={styles.field}>
         <label className={styles.fieldLabel}>Multiplier</label>
         <Form.Control
           className="ohd-field-control"
