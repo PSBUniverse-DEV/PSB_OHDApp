@@ -17,6 +17,12 @@ ALTER TABLE public.ohd_t_project_items
   ADD COLUMN IF NOT EXISTS rev_seal integer null;
 
 ALTER TABLE public.ohd_t_project_items
+  ADD COLUMN IF NOT EXISTS color_opacity integer null;
+
+ALTER TABLE public.ohd_t_project_items
+  ADD COLUMN IF NOT EXISTS model character varying(100) null;
+
+ALTER TABLE public.ohd_t_project_items
   ADD COLUMN IF NOT EXISTS multiplier integer null default 1;
 
 ALTER TABLE public.ohd_t_project_items
@@ -41,6 +47,12 @@ ALTER TABLE public.ohd_t_project_snapshot
 
 ALTER TABLE public.ohd_t_project_snapshot
   ADD COLUMN IF NOT EXISTS rev_seal integer null;
+
+ALTER TABLE public.ohd_t_project_snapshot
+  ADD COLUMN IF NOT EXISTS color_opacity integer null;
+
+ALTER TABLE public.ohd_t_project_snapshot
+  ADD COLUMN IF NOT EXISTS model character varying(100) null;
 
 ALTER TABLE public.ohd_t_project_snapshot
   ADD COLUMN IF NOT EXISTS multiplier integer null default 1;

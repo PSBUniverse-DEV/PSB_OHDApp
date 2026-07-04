@@ -192,7 +192,9 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
           height: h,
           color_id: toIntOrNull(i.color_id),
           pane_style_id: toIntOrNull(i.pane_style_id),
+          color_opacity: toIntOrNull(i.color_opacity),
           ins_type_id: toIntOrNull(i.ins_type_id),
+          model: i.model || null,
           opener_id: toIntOrNull(i.opener_id),
           windows_type_id: toIntOrNull(i.windows_type_id),
           track_id: toIntOrNull(i.track_id),
@@ -517,75 +519,101 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                     </div>
                   </div>
 
-                  {/* Per-Door Pricing Breakdown */}
+                  {/* Material Breakdown — Per-Door Cards */}
                   {(project.items || []).some((i) => Number(i.quantity) > 0 || Number(i.width) > 0) && (
-                    <div style={{ marginBottom: 16 }}>
-                      <h6 className="mb-2 fw-semibold" style={{ fontSize: "0.78rem" }}>Per-Door Pricing</h6>
+                    <div>
+                      <h6 className="mb-2 fw-semibold" style={{ fontSize: "0.78rem" }}>Material Breakdown</h6>
                       {(project.items || []).map((item, i) => {
                         if (!Number(item.quantity) && !Number(item.width)) return null;
                         const calc = (quoteResult?.itemResults || [])[i] || {};
+                        const openerCost = (item.opener_quantity || 0) * (openers.find(o => String(o.opener_id) === String(item.opener_id))?.opener_price || 0);
+                        const paneStyle = paneStyleNameById[String(item.pane_style_id)] || "—";
+                        const colorName = colorNameById[String(item.color_id)] || "—";
+                        const insType = insTypeNameById[String(item.ins_type_id)] || "—";
+                        const trackName = trackOptions.find(t => String(t.track_id) === String(item.track_id))?.track_name || "—";
+                        const openerName = openerNameById[String(item.opener_id)] || "—";
+                        const windowsName = windowsTypeNameById[String(item.windows_type_id)] || "—";
+                        const glassCategory = item.windows_type_id ? (windowTypes.find(w => String(w.windows_type_id) === String(item.windows_type_id))?.windows_glass_category || "—") : "—";
                         return (
-                          <div key={i} style={{ marginBottom: 8, padding: "6px 8px", background: "#f8f9fb", borderRadius: 4, border: "1px solid #eee" }}>
-                            <div className="fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Door {i + 1}</div>
-                            <div style={{ fontSize: "0.72rem", color: "#555", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 12px" }}>
+                          <div key={i} style={{ marginBottom: 10, padding: "10px 12px", background: "#fafcfe", borderRadius: 6, border: "1px solid var(--psb-border, #dde1e6)" }}>
+                            {/* Door header */}
+                            <div style={{ marginBottom: 8, paddingBottom: 6, borderBottom: "1px solid #e5e9ed" }}>
+                              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--psb-brand, #0d6efd)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Door {i + 1}</span>
+                            </div>
+                            {/* Section 1 — Door Information */}
+                            <div style={{ marginBottom: 10 }}>
+                              {/* Row 1: Qty | W × H */}
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", marginBottom: 6, fontSize: "0.72rem" }}>
+                                <div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Qty</div>
+                                  <div style={{ fontWeight: 500 }}>{item.quantity || "—"}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>W × H</div>
+                                  <div style={{ fontWeight: 500 }}>{item.width || "—"}" × {item.height || "—"}"</div>
+                                </div>
+                              </div>
+                              {/* Row 2: Pane Style Door | Color */}
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", marginBottom: 6, fontSize: "0.72rem" }}>
+                                <div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Pane Style Door</div>
+                                  <div style={{ fontWeight: 500 }}>{paneStyle}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Color</div>
+                                  <div style={{ fontWeight: 500 }}>{item.color_opacity ? `${item.color_opacity}%` : ""} {colorName}</div>
+                                </div>
+                              </div>
+                              {/* Row 3: Insulation + Model | Track Option */}
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", marginBottom: 6, fontSize: "0.72rem" }}>
+                                <div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Insulation</div>
+                                  <div style={{ fontWeight: 500 }}>{insType}{item.model ? ` / ${item.model}` : ""}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Track Option</div>
+                                  <div style={{ fontWeight: 500 }}>{trackName}</div>
+                                </div>
+                              </div>
+                              {/* Row 4: Opener Qty | Opener */}
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", marginBottom: 6, fontSize: "0.72rem" }}>
+                                <div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Opener Qty</div>
+                                  <div style={{ fontWeight: 500 }}>{item.opener_quantity || "—"}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Opener</div>
+                                  <div style={{ fontWeight: 500 }}>{item.opener_id ? `${openerName} x${item.opener_quantity || 1}` : "—"}</div>
+                                </div>
+                              </div>
+                              {/* Row 5: Windows Qty | Type | Glass */}
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px 16px", marginBottom: 6, fontSize: "0.72rem" }}>
+                                <div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Windows Qty</div>
+                                  <div style={{ fontWeight: 500 }}>{item.windows_quantity || "—"}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Type</div>
+                                  <div style={{ fontWeight: 500 }}>{windowsName}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Glass</div>
+                                  <div style={{ fontWeight: 500 }}>{glassCategory}</div>
+                                </div>
+                              </div>
+                            </div>
+                            {/* Section 2 — Pricing Breakdown */}
+                            <div style={{ borderTop: "1px solid #d0d5db", paddingTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", fontSize: "0.72rem" }}>
                               <span>Dimension Price</span><span style={{ textAlign: "right" }}>{fmtCurrency(calc.dimension_price)}</span>
-                              <span>Insulation</span><span style={{ textAlign: "right" }}>{fmtCurrency(calc.insulation_price)}</span>
-                              <span>Windows</span><span style={{ textAlign: "right" }}>{fmtCurrency(calc.windows_price)}</span>
-                              <span>Opener</span><span style={{ textAlign: "right" }}>{fmtCurrency((item.opener_quantity || 0) * (openers.find(o => String(o.opener_id) === String(item.opener_id))?.opener_price || 0))}</span>
-                              <span style={{ fontWeight: 600, borderTop: "1px solid #ddd", paddingTop: 2, marginTop: 2 }}>Door Total</span><span style={{ textAlign: "right", fontWeight: 600, borderTop: "1px solid #ddd", paddingTop: 2, marginTop: 2 }}>{fmtCurrency(calc.item_total)}</span>
+                              <span>Insulation Price</span><span style={{ textAlign: "right" }}>{fmtCurrency(calc.insulation_price)}</span>
+                              <span>Windows Price</span><span style={{ textAlign: "right" }}>{fmtCurrency(calc.windows_price)}</span>
+                              <span>Opener Price</span><span style={{ textAlign: "right" }}>{fmtCurrency(openerCost)}</span>
+                              <span style={{ fontWeight: 700, borderTop: "1px solid #d0d5db", paddingTop: 4, marginTop: 4 }}>Door Total</span>
+                              <span style={{ textAlign: "right", fontWeight: 700, borderTop: "1px solid #d0d5db", paddingTop: 4, marginTop: 4 }}>{fmtCurrency(calc.item_total)}</span>
                             </div>
                           </div>
                         );
                       })}
-                    </div>
-                  )}
-
-                  {/* Material Breakdown */}
-                  {(project.items || []).some((i) => Number(i.quantity) > 0 || Number(i.width) > 0) && (
-                    <div>
-                      <h6 className="mb-2 fw-semibold" style={{ fontSize: "0.78rem" }}>Material Breakdown</h6>
-                      <table className="ohd-quote-table" style={{ fontSize: "0.72rem" }}>
-                        <thead>
-                          <tr>
-                            <th>#</th>
-                            <th>Qty</th>
-                            <th>W x H</th>
-                            <th>Color</th>
-                            <th>Pane</th>
-                            <th>Insulation</th>
-                            <th>Track</th>
-                            <th>H-Seal</th>
-                            <th>R-Seal</th>
-                            <th>Mult</th>
-                            <th style={{ textAlign: "right" }}>Dim Price</th>
-                            <th style={{ textAlign: "right" }}>Ins Price</th>
-                            <th style={{ textAlign: "right" }}>Item Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(project.items || []).map((item, i) => {
-                            if (!Number(item.quantity) && !Number(item.width)) return null;
-                            const calc = (quoteResult?.itemResults || [])[i] || {};
-                            return (
-                              <tr key={i}>
-                                <td>{i + 1}</td>
-                                <td>{item.quantity || "—"}</td>
-                                <td>{item.width || "—"}x{item.height || "—"}</td>
-                                <td>{colorNameById[String(item.color_id)] || "—"}</td>
-                                <td>{paneStyleNameById[String(item.pane_style_id)] || "—"}</td>
-                                <td>{insTypeNameById[String(item.ins_type_id)] || "—"}</td>
-                                <td>{trackOptions.find(t => String(t.track_id) === String(item.track_id))?.track_name || "—"}</td>
-                                <td>{item.header_seal || "—"}</td>
-                                <td>{item.rev_seal || "—"}</td>
-                                <td>{item.multiplier || "—"}</td>
-                                <td style={{ textAlign: "right" }}>{fmtCurrency(calc.dimension_price)}</td>
-                                <td style={{ textAlign: "right" }}>{fmtCurrency(calc.insulation_price)}</td>
-                                <td style={{ textAlign: "right" }}>{fmtCurrency(calc.item_total)}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
                     </div>
                   )}
                 </div>
@@ -599,4 +627,3 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
     </div>
   );
 }
-

@@ -139,7 +139,9 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
       const height = toNumOrNull(row.height);
       const colorId = toIntOrNull(row.color_id);
       const paneStyleId = toIntOrNull(row.pane_style_id);
+      const colorOpacity = toIntOrNull(row.color_opacity);
       const insTypeId = toIntOrNull(row.ins_type_id);
+      const model = row.model || null;
       const openerId = toIntOrNull(row.opener_id);
       const windowsTypeId = toIntOrNull(row.windows_type_id);
       const trackId = toIntOrNull(row.track_id);
@@ -161,7 +163,9 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
         height,
         color_id: colorId,
         pane_style_id: paneStyleId,
+        color_opacity: colorOpacity,
         ins_type_id: insTypeId,
+        model: model,
         opener_id: openerId,
         windows_type_id: windowsTypeId,
         track_id: trackId,

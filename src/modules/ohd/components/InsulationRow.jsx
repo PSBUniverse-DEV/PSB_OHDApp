@@ -3,9 +3,17 @@
 import { Form } from "react-bootstrap";
 import styles from "./DoorQuoteForm.module.css";
 
+function getModelsForInsulation(insulationTypes, insTypeId) {
+  if (!insTypeId) return [];
+  const ins = insulationTypes.find(t => String(t.ins_type_id) === String(insTypeId));
+  if (!ins || !ins.model) return [];
+  return ins.model.split(",").map(m => m.trim()).filter(Boolean);
+}
+
 export default function InsulationRow({ item, index, onUpdate, insulationTypes, trackOptions }) {
+  const models = getModelsForInsulation(insulationTypes, item.ins_type_id);
   return (
-    <div className={styles.formRow}>
+    <div className={styles.formRowInsulation}>
       <div className={styles.field}>
         <label className={styles.fieldLabel}>Insulation</label>
         <Form.Select
@@ -23,7 +31,16 @@ export default function InsulationRow({ item, index, onUpdate, insulationTypes, 
       </div>
       <div className={styles.field}>
         <label className={styles.fieldLabel}>Model</label>
-        <div className={styles.fieldValue}>—</div>
+        <Form.Select
+          className="ohd-field-control"
+          value={item.model || ""}
+          onChange={(e) => onUpdate(index, "model", e.target.value)}
+        >
+          <option value="">Select...</option>
+          {models.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </Form.Select>
       </div>
       <div className={styles.field}>
         <label className={styles.fieldLabel}>Track Option</label>
@@ -39,10 +56,6 @@ export default function InsulationRow({ item, index, onUpdate, insulationTypes, 
             </option>
           ))}
         </Form.Select>
-      </div>
-      <div className={styles.field}>
-        <label className={styles.fieldLabel}>Price</label>
-        <div className={styles.fieldValue}>—</div>
       </div>
     </div>
   );

@@ -27,8 +27,8 @@ export default function DoorStyleRow({ item, index, onUpdate, paneStyles, colors
           <Form.Control
             className="ohd-field-control"
             placeholder="%"
-            value={item.color_percent || ""}
-            onChange={(e) => onUpdate(index, "color_percent", e.target.value)}
+            value={item.color_opacity || ""}
+            onChange={(e) => onUpdate(index, "color_opacity", e.target.value)}
           />
           <Form.Select
             className="ohd-field-control"
@@ -43,14 +43,6 @@ export default function DoorStyleRow({ item, index, onUpdate, paneStyles, colors
             ))}
           </Form.Select>
         </div>
-      </div>
-      <div className={styles.field}>
-        <label className={styles.fieldLabel}>&nbsp;</label>
-        <div className={styles.fieldValue}>&nbsp;</div>
-      </div>
-      <div className={styles.field}>
-        <label className={styles.fieldLabel}>Price</label>
-        <div className={styles.fieldValue}>—</div>
       </div>
     </div>
   );

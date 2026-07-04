@@ -127,15 +127,18 @@ create table public.ohd_t_project_items (
   quantity integer null,
   width numeric(10, 2) null,
   height numeric(10, 2) null,
+  color_opacity integer null,
   color_id bigint null,
   pane_style_id bigint null,
   ins_type_id bigint null,
+  model character varying(100) null,
   opener_id bigint null,
   windows_type_id bigint null,
   track_id bigint null,
   opener_quantity integer null,
   windows_quantity integer null,
   header_seal numeric(18, 2) null,
+  rev_seal integer null,
   multiplier integer null default 1,
   dimension_price numeric(18, 2) null,
   pane_style_price numeric(18, 2) null,
@@ -282,8 +285,16 @@ create table public.ohd_t_projects (
 
 
 
- 
-
+relevant files:
+src\modules\ohd\md files\database-table-reference.md
+src\modules\ohd\data\ohdProjectForm.data.js
+src\modules\ohd\data\ohdProjectForm.actions.js
+src\modules\ohd\components\DoorStyleRow.jsx
+src\modules\ohd\components\InsulationRow.jsx
+src\modules\ohd\components\OpenerRow.jsx
+src\modules\ohd\components\WindowRow.jsx
+src\modules\ohd\components\DimensionRow.jsx
+src\modules\ohd\components\DoorQuoteForm.module.css
 
 
 

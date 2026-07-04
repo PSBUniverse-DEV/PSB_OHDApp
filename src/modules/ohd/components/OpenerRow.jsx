@@ -32,10 +32,6 @@ export default function OpenerRow({ item, index, onUpdate, openers }) {
           ))}
         </Form.Select>
       </div>
-      <div className={styles.field}>
-        <label className={styles.fieldLabel}>Price</label>
-        <div className={styles.fieldValue}>—</div>
-      </div>
     </div>
   );
 }
