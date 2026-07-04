@@ -29,9 +29,6 @@ export function emptyDoorItem() {
     opener_quantity: "",
     windows_quantity: "",
     track_id: "",
-    header_seal: "",
-    rev_seal: "",
-    multiplier: "",
     dimension_price: "",
     pane_style_price: "",
     insulation_price: "",
@@ -64,6 +61,10 @@ export function createInitialProject() {
     downpayment: "",
     price_subtotal: "",
     price_overall_total: "",
+    // Pricing constants (defaults will be loaded from setup)
+    header_seal: "",
+    rev_and_seal: "",
+    multiplier: "",
   };
 }
 
@@ -84,9 +85,6 @@ export function mapHeaderToProject(header, items) {
     opener_quantity: i.opener_quantity != null ? String(i.opener_quantity) : "",
     windows_quantity: i.windows_quantity != null ? String(i.windows_quantity) : "",
     track_id: i.track_id ? String(i.track_id) : "",
-    header_seal: i.header_seal != null ? String(i.header_seal) : "",
-    rev_seal: i.rev_seal != null ? String(i.rev_seal) : "",
-    multiplier: i.multiplier != null ? String(i.multiplier) : "",
     dimension_price: i.dimension_price != null ? String(i.dimension_price) : "",
     pane_style_price: i.pane_style_price != null ? String(i.pane_style_price) : "",
     insulation_price: i.insulation_price != null ? String(i.insulation_price) : "",
@@ -120,6 +118,10 @@ export function mapHeaderToProject(header, items) {
     downpayment: header.downpayment || "",
     price_subtotal: header.price_subtotal || "",
     price_overall_total: header.price_overall_total || "",
+    // Pricing constants from project (or empty if not set)
+    header_seal: header.header_seal != null ? String(header.header_seal) : "",
+    rev_and_seal: header.rev_and_seal != null ? String(header.rev_and_seal) : "",
+    multiplier: header.multiplier != null ? String(header.multiplier) : "",
   };
 }
 
@@ -131,14 +133,27 @@ export function calculateOhdQuote(project, setup) {
     (i) => Number(i.quantity) > 0 || Number(i.width) > 0 || Number(i.height) > 0,
   );
 
+  // Use project-level pricing constants (fallback to setup defaults if not set)
+  const getProjectConstant = (fieldName, setupConstantName) => {
+    const projectValue = project[fieldName];
+    if (projectValue !== undefined && projectValue !== null && String(projectValue).trim() !== "") {
+      return Number(projectValue) || 0;
+    }
+    // Fallback to setup defaults
+    const pricingConstants = Array.isArray(setup.pricingConstants) ? setup.pricingConstants : [];
+    const c = pricingConstants.find(p => p.constant_name === setupConstantName);
+    return c ? Number(c.constant_value) || 0 : 0;
+  };
+
+  const headerSeal = getProjectConstant("header_seal", "Header Seal");
+  const revAndSeal = getProjectConstant("rev_and_seal", "Rev and Seal");
+  const multiplier = getProjectConstant("multiplier", "Multiplier") || 1;
+
   const itemResults = items.map((i) => {
     const qty = Number(i.quantity) || 0;
     const w = Number(i.width) || 0;
     const h = Number(i.height) || 0;
     const sqft = w * h;
-    const headerSeal = Number(i.header_seal) || 0;
-    const revSeal = Number(i.rev_seal) || 0;
-    const multiplier = Number(i.multiplier) || 1;
 
     // Lookup insulation price per sqft
     const insTypes = Array.isArray(setup.insulationTypes) ? setup.insulationTypes : [];
@@ -174,7 +189,7 @@ export function calculateOhdQuote(project, setup) {
     const raw = (
       (((w * h) * insPricePerSqft) * qty) +
       (w * headerSeal) +
-      ((revSeal * 2) * h)
+      ((revAndSeal * 2) * h)
     ) / multiplier;
     const dimensionPrice = roundToNearest(raw, 5);
     const paneStylePrice = 0; // Placeholder — will be calculated from pane style setup

@@ -16,6 +16,7 @@ import {
   createInitialProject, emptyDoorItem, emptyExtra, mapHeaderToProject,
   calculateOhdQuote, formatCurrency
 } from "../data/ohdProjectForm.data";
+import { getWorkflowForStatus, canTransitionTo, getAvailableTransitions } from "../data/ohdWorkflow.config";
 import DimensionRow from "../components/DimensionRow";
 import DoorStyleRow from "../components/DoorStyleRow";
 import InsulationRow from "../components/InsulationRow";
@@ -40,6 +41,20 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
   const windowTypes = useMemo(() => Array.isArray(setup.windowTypes) ? setup.windowTypes : [], [setup.windowTypes]);
   const trackOptions = useMemo(() => Array.isArray(setup.trackOptions) ? setup.trackOptions : [], [setup.trackOptions]);
 
+  // ─── Workflow State ────────────────────────────────────
+  const currentStatusId = Number(project.statusId) || 1;
+  const workflow = getWorkflowForStatus(currentStatusId);
+  const isReadOnly = workflow && !workflow.isEditable;
+  const canEditProject = workflow ? workflow.editing.projectInfo : true;
+  const canEditItems = workflow ? workflow.editing.doorItems : true;
+  const canEditAdditionals = workflow ? workflow.editing.additionals : true;
+  const canEditPricingConstants = workflow ? workflow.editing.pricingConstants : true;
+  const canEditDiscount = workflow ? workflow.editing.discount : true;
+  const canEditDeposit = workflow ? workflow.editing.deposit : true;
+  const availableActions = workflow ? workflow.actions.filter(a => a.show) : [];
+  const statusBadge = workflow && workflow.ui.badge.show ? workflow.ui.badge : null;
+  const statusWatermark = workflow ? workflow.ui.watermark : null;
+
   // ─── Warnings ──────────────────────────────────────────
   useEffect(() => {
     if (setup.sourceErrors?.length > 0) {
@@ -56,12 +71,23 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
       );
     }
     const base = createInitialProject();
+    
+    // Auto-populate pricing constants from setup for new projects
+    const getDefaultConstant = (constantName) => {
+      const constant = (setup.pricingConstants || []).find(c => c.constant_name === constantName);
+      return constant ? String(constant.constant_value) : "";
+    };
+    
     return {
       ...base,
       statusId: String(statuses[0]?.status_id || ""),
       tripId: String(tripFeeRates[0]?.trip_id || ""),
+      // Auto-populate pricing constants from setup
+      header_seal: getDefaultConstant("Header Seal"),
+      rev_and_seal: getDefaultConstant("Rev and Seal"),
+      multiplier: getDefaultConstant("Multiplier"),
     };
-  }, [isEdit, projectData, statuses, tripFeeRates]);
+  }, [isEdit, projectData, statuses, tripFeeRates, setup.pricingConstants]);
 
   const [project, setProject] = useState(() => buildInitialProject());
   const [saving, setSaving] = useState(false);
@@ -143,6 +169,12 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
     return map;
   }, [windowTypes]);
 
+  const pricingConstantByName = useMemo(() => {
+    const map = {};
+    (setup.pricingConstants || []).forEach((c) => { map[c.constant_name] = Number(c.constant_value) || 0; });
+    return map;
+  }, [setup.pricingConstants]);
+
   // ─── Save ──────────────────────────────────────────────
   const saveProject = useCallback(async () => {
     if (!project) return;
@@ -177,6 +209,10 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
         downpayment: project.depositIncluded ? toNumOrNull(project.depositPercent) : null,
         price_subtotal: subtotal,
         price_overall_total: overallTotal,
+        // Pricing constants
+        header_seal: toNumOrNull(project.header_seal),
+        rev_and_seal: toNumOrNull(project.rev_and_seal),
+        multiplier: toIntOrNull(project.multiplier),
       };
 
       const calcResults = quoteResult?.itemResults || [];
@@ -198,9 +234,6 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
           opener_id: toIntOrNull(i.opener_id),
           windows_type_id: toIntOrNull(i.windows_type_id),
           track_id: toIntOrNull(i.track_id),
-          header_seal: toNumOrNull(i.header_seal),
-          rev_seal: toIntOrNull(i.rev_seal),
-          multiplier: toIntOrNull(i.multiplier),
           dimension_price: toNumOrNull(calc.dimension_price),
           pane_style_price: toNumOrNull(calc.pane_style_price),
           insulation_price: toNumOrNull(calc.insulation_price),
@@ -259,6 +292,56 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
   const getToggleId = (name) => `ohd-toggle-${toggleIdPrefix}-${name}`;
   const moneyValueStyle = { minWidth: 136, fontVariantNumeric: "tabular-nums" };
 
+  // ─── Action Handler ────────────────────────────────────
+  const handleAction = useCallback(async (actionId) => {
+    switch (actionId) {
+      case "approve":
+        updateField("statusId", "4");
+        await saveProject();
+        toastSuccess("Project approved.", "OHD Project");
+        break;
+      case "cancel":
+        if (window.confirm("Are you sure you want to cancel this project?")) {
+          updateField("statusId", "7");
+          await saveProject();
+          toastSuccess("Project cancelled.", "OHD Project");
+        }
+        break;
+      case "put_on_hold":
+        updateField("statusId", "6");
+        await saveProject();
+        toastSuccess("Project put on hold.", "OHD Project");
+        break;
+      case "resume":
+        updateField("statusId", "3");
+        await saveProject();
+        toastSuccess("Project resumed.", "OHD Project");
+        break;
+      case "complete":
+        updateField("statusId", "5");
+        await saveProject();
+        toastSuccess("Project completed.", "OHD Project");
+        break;
+      case "start_project":
+        updateField("statusId", "3");
+        await saveProject();
+        toastSuccess("Project started.", "OHD Project");
+        break;
+      case "return_for_revision":
+        updateField("statusId", "1");
+        await saveProject();
+        toastSuccess("Returned for revision.", "OHD Project");
+        break;
+      case "revoke_approval":
+        updateField("statusId", "1");
+        await saveProject();
+        toastSuccess("Approval revoked.", "OHD Project");
+        break;
+      default:
+        toastWarning(`Action "${actionId}" not implemented yet.`, "OHD Project");
+    }
+  }, [saveProject, updateField]);
+
   if (!project) return <Container className="py-4">Loading...</Container>;
 
   return (
@@ -278,9 +361,36 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
               <span className={styles.ohdMetaLabel}>ID</span>
               <span className={styles.ohdMetaValue}>{project.projId ? String(project.projId) : "New"}</span>
             </div>
+            {statusBadge && (
+              <div className={styles.ohdMetaItem}>
+                <span className={styles.ohdMetaLabel}>Status</span>
+                <span className={styles.ohdMetaValue} style={{ 
+                  background: statusBadge.color, 
+                  color: "#fff", 
+                  padding: "2px 8px", 
+                  borderRadius: 4, 
+                  fontSize: "0.75rem",
+                  fontWeight: 600 
+                }}>
+                  {statusBadge.text}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         <div className={styles.ohdHeaderActions}>
+          {availableActions.slice(0, 3).map((action) => (
+            <Button 
+              key={action.id} 
+              variant={action.variant} 
+              onClick={() => handleAction(action.id)}
+              disabled={saving}
+              size="sm"
+              className="me-2"
+            >
+              {action.label}
+            </Button>
+          ))}
           <Button variant="success" onClick={saveProject} disabled={saving} loading={saving}>
             <FontAwesomeIcon icon={faCheck} className="me-1" /> Save Project
           </Button>
@@ -302,7 +412,7 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                 <Col md={6}>
                   <Form.Group>
                     <Form.Label className={styles.ohdFormLabel}>Status</Form.Label>
-                    <Form.Select className="ohd-field-control" value={project.statusId || ""} onChange={(e) => updateField("statusId", e.target.value)}>
+                  <Form.Select className="ohd-field-control" value={project.statusId || ""} onChange={(e) => updateField("statusId", e.target.value)} disabled={isReadOnly}>
                       <option value="">Select status...</option>
                       {statuses.map((s) => <option key={s.status_id} value={String(s.status_id)}>{s.name}</option>)}
                     </Form.Select>
@@ -311,28 +421,60 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                 <Col md={6}>
                   <Form.Group>
                     <Form.Label className={styles.ohdFormLabel}>Quote #</Form.Label>
-                    <Form.Control className="ohd-field-control" value={project.quote_number || ""} onChange={(e) => updateField("quote_number", e.target.value)} placeholder="Optional quote number" />
+                  <Form.Control className="ohd-field-control" value={project.quote_number || ""} onChange={(e) => updateField("quote_number", e.target.value)} placeholder="Optional quote number" disabled={isReadOnly || !canEditProject} />
                   </Form.Group>
                 </Col>
                 <Col md={12}>
                   <Form.Group>
                     <Form.Label className={styles.ohdFormLabel}>Project Name <span style={{ color: "#d63333" }}>*</span></Form.Label>
-                    <Form.Control className="ohd-field-control" value={project.projectName || ""} onChange={(e) => updateField("projectName", e.target.value)} />
+                  <Form.Control className="ohd-field-control" value={project.projectName || ""} onChange={(e) => updateField("projectName", e.target.value)} disabled={isReadOnly || !canEditProject} />
                   </Form.Group>
                 </Col>
                 <Col md={12}>
                   <Form.Group>
                     <Form.Label className={styles.ohdFormLabel}>Project Address</Form.Label>
-                    <Form.Control className="ohd-field-control" as="textarea" rows={2} value={project.projectAddress || ""} onChange={(e) => updateField("projectAddress", e.target.value)} />
+                  <Form.Control className="ohd-field-control" as="textarea" rows={2} value={project.projectAddress || ""} onChange={(e) => updateField("projectAddress", e.target.value)} disabled={isReadOnly || !canEditProject} />
                   </Form.Group>
                 </Col>
                 <Col md={12}>
                   <Form.Group>
                     <Form.Label className={styles.ohdFormLabel}>Request Link (Missive)</Form.Label>
-                    <Form.Control className="ohd-field-control" placeholder="Paste Missive request link" value={project.requestLink || ""} onChange={(e) => updateField("requestLink", e.target.value)} />
+                  <Form.Control className="ohd-field-control" placeholder="Paste Missive request link" value={project.requestLink || ""} onChange={(e) => updateField("requestLink", e.target.value)} disabled={isReadOnly || !canEditProject} />
                   </Form.Group>
                 </Col>
               </Row>
+            </div>
+          </div>
+
+          {/* Pricing Constants */}
+          <div className={styles.ohdSection}>
+            <div className={styles.ohdSectionHeader}>
+              <FontAwesomeIcon icon={faGear} /> Pricing Constants
+            </div>
+            <div className={styles.ohdSectionBody}>
+              <Row className="g-2">
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className={styles.ohdFormLabel}>Header Seal</Form.Label>
+                    <Form.Control className="ohd-field-control" type="number" step="0.01" value={project.header_seal || ""} onChange={(e) => updateField("header_seal", e.target.value)} disabled={!canEditPricingConstants} />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className={styles.ohdFormLabel}>Rev and Seal</Form.Label>
+                    <Form.Control className="ohd-field-control" type="number" step="0.01" value={project.rev_and_seal || ""} onChange={(e) => updateField("rev_and_seal", e.target.value)} disabled={!canEditPricingConstants} />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className={styles.ohdFormLabel}>Multiplier</Form.Label>
+                    <Form.Control className="ohd-field-control" type="number" step="0.01" value={project.multiplier || ""} onChange={(e) => updateField("multiplier", e.target.value)} disabled={!canEditPricingConstants} />
+                  </Form.Group>
+                </Col>
+              </Row>
+              <div className="mt-2 text-muted" style={{ fontSize: "0.75rem" }}>
+                These constants are used for dimension price calculations. Leave empty to use setup defaults.
+              </div>
             </div>
           </div>
 
@@ -361,7 +503,7 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
             <div className={styles.ohdSectionHeader}>
               <FontAwesomeIcon icon={faLayerGroup} /> Door Items
               <span className={styles.ohdSectionCount}>{(project.items || []).length}/{MAX_ITEMS}</span>
-              <Button variant="secondary" className={styles.ohdSectionAction} onClick={addItem} disabled={(project.items || []).length >= MAX_ITEMS}>+ Add Door</Button>
+              {canEditItems && <Button variant="secondary" className={styles.ohdSectionAction} onClick={addItem} disabled={(project.items || []).length >= MAX_ITEMS}>+ Add Door</Button>}
             </div>
             <div className={styles.ohdSectionBody}>
               {(project.items || []).map((item, i) => (
@@ -371,11 +513,11 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                     <Button variant="secondary" disabled={(project.items || []).length <= MIN_ITEMS} onClick={() => removeItem(i)}>Remove</Button>
                   </div>
                   <div className={doorFormStyles.doorForm}>
-                    <DimensionRow item={item} index={i} onUpdate={updateItem} />
-                    <DoorStyleRow item={item} index={i} onUpdate={updateItem} paneStyles={paneStyles} colors={colors} />
-                    <InsulationRow item={item} index={i} onUpdate={updateItem} insulationTypes={insulationTypes} trackOptions={trackOptions} />
-                    <OpenerRow item={item} index={i} onUpdate={updateItem} openers={openers} />
-                    <WindowRow item={item} index={i} onUpdate={updateItem} windowTypes={windowTypes} />
+                    <DimensionRow item={item} index={i} onUpdate={updateItem} disabled={!canEditItems} />
+                    <DoorStyleRow item={item} index={i} onUpdate={updateItem} paneStyles={paneStyles} colors={colors} disabled={!canEditItems} />
+                    <InsulationRow item={item} index={i} onUpdate={updateItem} insulationTypes={insulationTypes} trackOptions={trackOptions} disabled={!canEditItems} />
+                    <OpenerRow item={item} index={i} onUpdate={updateItem} openers={openers} disabled={!canEditItems} />
+                    <WindowRow item={item} index={i} onUpdate={updateItem} windowTypes={windowTypes} disabled={!canEditItems} />
                   </div>
                 </div>
               ))}
@@ -391,7 +533,7 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
               {/* Extras */}
               <div className={styles.ohdToggleBlock}>
                 <div className="additionals-toggle-row additionals-toggle-include">
-                  <Form.Check type="switch" id={getToggleId("extras")} className="m-0" checked={Boolean(project.extrasIncluded)} onChange={(e) => updateField("extrasIncluded", e.target.checked)} />
+                  <Form.Check type="switch" id={getToggleId("extras")} className="m-0" checked={Boolean(project.extrasIncluded)} onChange={(e) => updateField("extrasIncluded", e.target.checked)} disabled={!canEditAdditionals} />
                   <label className="additionals-toggle-label" htmlFor={getToggleId("extras")}>Include Extras</label>
                 </div>
               </div>
@@ -402,19 +544,19 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                       <Col md={5}>
                         <Form.Group>
                           <Form.Label className={styles.ohdFormLabel}>Description</Form.Label>
-                          <Form.Control className="ohd-field-control" placeholder="Description" value={extra.description || ""} onChange={(e) => updateExtra(i, "description", e.target.value)} />
+                  <Form.Control className="ohd-field-control" placeholder="Description" value={extra.description || ""} onChange={(e) => updateExtra(i, "description", e.target.value)} disabled={!canEditAdditionals} />
                         </Form.Group>
                       </Col>
                       <Col md={2}>
                         <Form.Group>
                           <Form.Label className={styles.ohdFormLabel}>Qty</Form.Label>
-                          <Form.Control className="ohd-field-control" type="number" value={extra.qty || ""} onChange={(e) => updateExtra(i, "qty", e.target.value)} />
+                  <Form.Control className="ohd-field-control" type="number" value={extra.qty || ""} onChange={(e) => updateExtra(i, "qty", e.target.value)} disabled={!canEditAdditionals} />
                         </Form.Group>
                       </Col>
                       <Col md={3}>
                         <Form.Group>
                           <Form.Label className={styles.ohdFormLabel}>Unit Price</Form.Label>
-                          <Form.Control className="ohd-field-control" type="number" step="0.01" value={extra.unitPrice || ""} onChange={(e) => updateExtra(i, "unitPrice", e.target.value)} />
+                  <Form.Control className="ohd-field-control" type="number" step="0.01" value={extra.unitPrice || ""} onChange={(e) => updateExtra(i, "unitPrice", e.target.value)} disabled={!canEditAdditionals} />
                         </Form.Group>
                       </Col>
                       <Col md={2} className="d-flex align-items-end">
@@ -422,14 +564,14 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                       </Col>
                     </Row>
                   ))}
-                  <Button variant="secondary" onClick={addExtra} disabled={(project.extras || []).length >= 4} className="mt-1">+ Add Extra</Button>
+                  {canEditAdditionals && <Button variant="secondary" onClick={addExtra} disabled={(project.extras || []).length >= 4} className="mt-1">+ Add Extra</Button>}
                 </div>
               )}
 
               {/* Discount */}
               <div className={styles.ohdToggleBlock}>
                 <div className="additionals-toggle-row additionals-toggle-include">
-                  <Form.Check type="switch" id={getToggleId("discount")} className="m-0" checked={Boolean(project.discountIncluded)} onChange={(e) => updateField("discountIncluded", e.target.checked)} />
+                  <Form.Check type="switch" id={getToggleId("discount")} className="m-0" checked={Boolean(project.discountIncluded)} onChange={(e) => updateField("discountIncluded", e.target.checked)} disabled={!canEditDiscount} />
                   <label className="additionals-toggle-label" htmlFor={getToggleId("discount")}>Include Discount</label>
                 </div>
               </div>
@@ -438,7 +580,7 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                   <Col md={4}>
                     <Form.Group>
                       <Form.Label className={styles.ohdFormLabel}>Discount (%)</Form.Label>
-                      <Form.Control className="ohd-field-control" type="number" step="0.01" min="0" max="100" value={project.discountPercent || ""} onChange={(e) => updateField("discountPercent", e.target.value)} />
+                      <Form.Control className="ohd-field-control" type="number" step="0.01" min="0" max="100" value={project.discountPercent || ""} onChange={(e) => updateField("discountPercent", e.target.value)} disabled={!canEditDiscount} />
                     </Form.Group>
                   </Col>
                 </Row>
@@ -447,14 +589,14 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
               {/* Deposit */}
               <div className={styles.ohdToggleBlock}>
                 <div className="additionals-toggle-row additionals-toggle-include">
-                  <Form.Check type="switch" id={getToggleId("deposit")} className="m-0" checked={Boolean(project.depositIncluded)} onChange={(e) => { updateField("depositIncluded", e.target.checked); if (!e.target.checked) updateField("depositPercent", ""); }} />
+                  <Form.Check type="switch" id={getToggleId("deposit")} className="m-0" checked={Boolean(project.depositIncluded)} onChange={(e) => { updateField("depositIncluded", e.target.checked); if (!e.target.checked) updateField("depositPercent", ""); }} disabled={!canEditDeposit} />
                   <label className="additionals-toggle-label" htmlFor={getToggleId("deposit")}>Include Deposit</label>
                 </div>
               </div>
               {project.depositIncluded && (
                 <Form.Group className="mt-2" style={{ maxWidth: 260 }}>
                   <Form.Label className={styles.ohdFormLabel}>Deposit (%)</Form.Label>
-                  <Form.Control className="ohd-field-control" type="number" step="0.01" min="0" max="100" value={project.depositPercent || ""} onChange={(e) => updateField("depositPercent", e.target.value)} />
+                  <Form.Control className="ohd-field-control" type="number" step="0.01" min="0" max="100" value={project.depositPercent || ""} onChange={(e) => updateField("depositPercent", e.target.value)} disabled={!canEditDeposit} />
                 </Form.Group>
               )}
             </div>
@@ -606,6 +748,12 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                               <span>Opener Price</span><span style={{ textAlign: "right" }}>{fmtCurrency(openerCost)}</span>
                               <span style={{ fontWeight: 700, borderTop: "1px solid #d0d5db", paddingTop: 4, marginTop: 4 }}>Door Total</span>
                               <span style={{ textAlign: "right", fontWeight: 700, borderTop: "1px solid #d0d5db", paddingTop: 4, marginTop: 4 }}>{fmtCurrency(calc.item_total)}</span>
+                            </div>
+                            {/* Pricing Constants Used */}
+                            <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid #eee", fontSize: "0.68rem", color: "#777", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "4px 8px" }}>
+                              <span>Header Seal: {fmtCurrency(project.header_seal || pricingConstantByName["Header Seal"])}</span>
+                              <span>Rev and Seal: {fmtCurrency(project.rev_and_seal || pricingConstantByName["Rev and Seal"])}</span>
+                              <span>Multiplier: {project.multiplier || pricingConstantByName["Multiplier"] || 1}</span>
                             </div>
                           </div>
                         );

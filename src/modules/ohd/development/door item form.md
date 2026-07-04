@@ -18,18 +18,17 @@ Each door should be displayed as its own card (Door 1, Door 2, etc.) with the fo
 
 ## Section 1 — Door Dimensions
 
-This is the first row and should contain six evenly spaced fields.
+This is the first row and should contain three evenly spaced fields.
 
 | Field       | Source                            |
 | ----------- | --------------------------------- |
 | Quantity    | `ohd_t_project_items.quantity`    |
 | Width (in)  | `ohd_t_project_items.width`       |
 | Height (in) | `ohd_t_project_items.height`      |
-| Header Seal | `ohd_t_project_items.header_seal` |
-| Rev Seal    | `ohd_t_project_items.rev_seal`    |
-| Multiplier  | `ohd_t_project_items.multiplier`  |
 
-These six fields should occupy the full width of the card with consistent spacing.
+These three fields should occupy the full width of the card with consistent spacing.
+
+> **Note:** Header Seal, Rev Seal, and Multiplier are global pricing constants stored in `ohd_s_pricing_constants`. They are not user inputs and are applied automatically during calculation.
 
 ---
 
@@ -167,10 +166,10 @@ Database Mapping
 ## Section 2 — Door Style
 
 ```
-+----------------------+-------------+---------------------------------------+
-| Pane Style Door      | Color %     | Color                                |
-| [ Select ▼ ]         | [____]      | [ Select ▼ ]                         |
-+----------------------+-------------+---------------------------------------+
++----------+-----------+-----------+
+| Qty      | Width (") | Height(") |
+| [_____]  | [_____]   | [_____]   |
++----------+-----------+-----------+
 ```
 
 Database Mapping
