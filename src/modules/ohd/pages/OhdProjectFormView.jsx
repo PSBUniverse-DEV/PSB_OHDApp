@@ -586,19 +586,15 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                                   <div style={{ fontWeight: 500 }}>{item.opener_id ? `${openerName} x${item.opener_quantity || 1}` : "—"}</div>
                                 </div>
                               </div>
-                              {/* Row 5: Windows Qty | Type | Glass */}
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px 16px", marginBottom: 6, fontSize: "0.72rem" }}>
+                              {/* Row 5: Windows Qty | Type and Glass */}
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", marginBottom: 6, fontSize: "0.72rem" }}>
                                 <div>
                                   <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Windows Qty</div>
                                   <div style={{ fontWeight: 500 }}>{item.windows_quantity || "—"}</div>
                                 </div>
                                 <div>
-                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Type</div>
-                                  <div style={{ fontWeight: 500 }}>{windowsName}</div>
-                                </div>
-                                <div>
-                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Glass</div>
-                                  <div style={{ fontWeight: 500 }}>{glassCategory}</div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Type and Glass</div>
+                                  <div style={{ fontWeight: 500 }}>{item.windows_type_id ? `${windowsName} - ${glassCategory}` : "—"}</div>
                                 </div>
                               </div>
                             </div>

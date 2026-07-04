@@ -85,13 +85,12 @@ Fourth row.
 
 Fifth row.
 
-| Field       | Source                                                                    |
-| ----------- | ------------------------------------------------------------------------- |
-| Windows Qty | `ohd_t_project_items.windows_quantity`                                    |
-| Type        | `ohd_t_project_items.windows_type_id` → `ohd_s_windows_type.windows_type` |
-| Glass       | Derived from the selected Window Type (`windows_glass_category`)          |
+| Field         | Source                                                                      |
+| ------------- | --------------------------------------------------------------------------- |
+| Windows Qty   | `ohd_t_project_items.windows_quantity`                                      |
+| Type and Glass| `ohd_t_project_items.windows_type_id` → `ohd_s_windows_type` (combined)     |
 
-If the glass selection is determined by the selected window type, populate it accordingly. Otherwise, keep it as a dropdown if the database supports multiple glass options.
+The **Type and Glass** dropdown combines both values into a single selection. Each option displays the window type and its associated glass category (e.g., `Cascade - Clear`, `Cascade - Frosted`). Only `windows_type_id` is saved; the related `windows_type`, `windows_glass_category`, and `windows_price` are retrieved from the selected record as needed.
 
 ---
 
@@ -231,19 +230,18 @@ Database Mapping
 ## Section 5 — Windows
 
 ```
-+-------------------+---------------------------+---------------------------+
-| Windows Qty       | Type                      | Glass                     |
-| [_____]           | [ Select ▼ ]              | [ Select ▼ ]              |
-+-------------------+---------------------------+---------------------------+
++-------------------+-----------------------------------+
+| Windows Qty       | Type and Glass                    |
+| [_____]           | [ Select... ▼ ]                   |
++-------------------+-----------------------------------+
 ```
 
 Database Mapping
 
-| Field       | Database                 |
-| ----------- | ------------------------ |
-| Windows Qty | `windows_quantity`       |
-| Type        | `windows_type_id`        |
-| Glass       | `windows_glass_category` |
+| Field         | Database                |
+| ------------- | ----------------------- |
+| Windows Qty   | `windows_quantity`      |
+| Type and Glass| `windows_type_id`       |
 
 ---
 
