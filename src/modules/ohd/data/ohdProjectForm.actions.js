@@ -105,6 +105,7 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
     header_seal: toNumOrNull(header.header_seal),
     rev_and_seal: toNumOrNull(header.rev_and_seal),
     multiplier: toIntOrNull(header.multiplier),
+    Date: header.date || null,
   };
 
   if (!h.status_id || !h.trip_id) {

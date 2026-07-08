@@ -280,8 +280,8 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
   const fmtCurrency = (n) => `$${fmt(Number(n || 0))}`;
   const displayOrDash = (v) => v && String(v).trim() ? String(v).trim() : "—";
 
-  const displayDate = project?.createdAt
-    ? new Date(project.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" })
+  const displayDate = project?.date
+    ? new Date(project.date).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" })
     : "—";
 
   const discountAmount = Number(quoteResult?.pricing?.discountAmount || 0);

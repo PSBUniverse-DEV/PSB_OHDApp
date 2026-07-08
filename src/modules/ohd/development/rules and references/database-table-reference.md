@@ -239,16 +239,13 @@ create table public.ohd_t_projects (
   header_seal numeric(18, 2) null,
   rev_and_seal numeric(18, 2) null,
   multiplier integer null default 1,
+  "Date" date null,
   constraint ohd_t_projects_pkey primary key (proj_id),
   constraint fk_ohd_project_createdby foreign KEY (created_by) references psb_s_user (user_id),
   constraint fk_ohd_project_trip foreign KEY (trip_id) references ohd_s_trip_rates (trip_id),
   constraint fk_ohd_project_updatedby foreign KEY (updated_by) references psb_s_user (user_id),
   constraint ohd_t_projects_status_id_fkey foreign KEY (status_id) references ohd_s_statuses (status_id) on update CASCADE on delete set null
 ) TABLESPACE pg_default;
-
-
-
-
 
 
 
