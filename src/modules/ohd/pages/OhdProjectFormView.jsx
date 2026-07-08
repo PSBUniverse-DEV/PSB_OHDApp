@@ -41,20 +41,6 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
   const windowTypes = useMemo(() => Array.isArray(setup.windowTypes) ? setup.windowTypes : [], [setup.windowTypes]);
   const trackOptions = useMemo(() => Array.isArray(setup.trackOptions) ? setup.trackOptions : [], [setup.trackOptions]);
 
-  // ─── Workflow State ────────────────────────────────────
-  const currentStatusId = Number(project.statusId) || 1;
-  const workflow = getWorkflowForStatus(currentStatusId);
-  const isReadOnly = workflow && !workflow.isEditable;
-  const canEditProject = workflow ? workflow.editing.projectInfo : true;
-  const canEditItems = workflow ? workflow.editing.doorItems : true;
-  const canEditAdditionals = workflow ? workflow.editing.additionals : true;
-  const canEditPricingConstants = workflow ? workflow.editing.pricingConstants : true;
-  const canEditDiscount = workflow ? workflow.editing.discount : true;
-  const canEditDeposit = workflow ? workflow.editing.deposit : true;
-  const availableActions = workflow ? workflow.actions.filter(a => a.show) : [];
-  const statusBadge = workflow && workflow.ui.badge.show ? workflow.ui.badge : null;
-  const statusWatermark = workflow ? workflow.ui.watermark : null;
-
   // ─── Warnings ──────────────────────────────────────────
   useEffect(() => {
     if (setup.sourceErrors?.length > 0) {
@@ -91,6 +77,20 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
 
   const [project, setProject] = useState(() => buildInitialProject());
   const [saving, setSaving] = useState(false);
+
+  // ─── Workflow State ────────────────────────────────────
+  const currentStatusId = Number(project?.statusId) || 1;
+  const workflow = getWorkflowForStatus(currentStatusId);
+  const isReadOnly = workflow && !workflow.isEditable;
+  const canEditProject = workflow ? workflow.editing.projectInfo : true;
+  const canEditItems = workflow ? workflow.editing.doorItems : true;
+  const canEditAdditionals = workflow ? workflow.editing.additionals : true;
+  const canEditPricingConstants = workflow ? workflow.editing.pricingConstants : true;
+  const canEditDiscount = workflow ? workflow.editing.discount : true;
+  const canEditDeposit = workflow ? workflow.editing.deposit : true;
+  const availableActions = workflow ? workflow.actions.filter(a => a.show) : [];
+  const statusBadge = workflow && workflow.ui.badge.show ? workflow.ui.badge : null;
+  const statusWatermark = workflow ? workflow.ui.watermark : null;
 
   // ─── Field helpers ─────────────────────────────────────
   const updateField = (field, value) => setProject((p) => ({ ...p, [field]: value }));
