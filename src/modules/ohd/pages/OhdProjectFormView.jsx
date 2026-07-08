@@ -361,36 +361,13 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
               <span className={styles.ohdMetaLabel}>ID</span>
               <span className={styles.ohdMetaValue}>{project.projId ? String(project.projId) : "New"}</span>
             </div>
-            {statusBadge && (
-              <div className={styles.ohdMetaItem}>
-                <span className={styles.ohdMetaLabel}>Status</span>
-                <span className={styles.ohdMetaValue} style={{ 
-                  background: statusBadge.color, 
-                  color: "#fff", 
-                  padding: "2px 8px", 
-                  borderRadius: 4, 
-                  fontSize: "0.75rem",
-                  fontWeight: 600 
-                }}>
-                  {statusBadge.text}
-                </span>
-              </div>
-            )}
+            <div className={styles.ohdMetaItem}>
+              <span className={styles.ohdMetaLabel}>Date</span>
+              <span className={styles.ohdMetaValue}>{displayDate}</span>
+            </div>
           </div>
         </div>
         <div className={styles.ohdHeaderActions}>
-          {availableActions.slice(0, 3).map((action) => (
-            <Button 
-              key={action.id} 
-              variant={action.variant} 
-              onClick={() => handleAction(action.id)}
-              disabled={saving}
-              size="sm"
-              className="me-2"
-            >
-              {action.label}
-            </Button>
-          ))}
           <Button variant="success" onClick={saveProject} disabled={saving} loading={saving}>
             <FontAwesomeIcon icon={faCheck} className="me-1" /> Save Project
           </Button>
