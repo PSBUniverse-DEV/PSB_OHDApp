@@ -424,37 +424,7 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
           </div>
 
           {/* Pricing Constants */}
-          <div className={styles.ohdSection}>
-            <div className={styles.ohdSectionHeader}>
-              <FontAwesomeIcon icon={faGear} /> Pricing Constants
-            </div>
-            <div className={styles.ohdSectionBody}>
-              <Row className="g-2">
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className={styles.ohdFormLabel}>Header Seal</Form.Label>
-                    <Form.Control className="ohd-field-control" type="number" step="0.01" value={project.header_seal || ""} onChange={(e) => updateField("header_seal", e.target.value)} disabled={!canEditPricingConstants} />
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className={styles.ohdFormLabel}>Rev Seal</Form.Label>
-                    <Form.Control className="ohd-field-control" type="number" step="0.01" value={project.rev_and_seal || ""} onChange={(e) => updateField("rev_and_seal", e.target.value)} disabled={!canEditPricingConstants} />
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className={styles.ohdFormLabel}>Multiplier</Form.Label>
-                    <Form.Control className="ohd-field-control" type="number" step="0.01" value={project.multiplier || ""} onChange={(e) => updateField("multiplier", e.target.value)} disabled={!canEditPricingConstants} />
-                  </Form.Group>
-                </Col>
-              </Row>
-              <div className="mt-2 text-muted" style={{ fontSize: "0.75rem" }}>
-                These constants are used for dimension price calculations. Leave empty to use setup defaults.
-              </div>
-            </div>
-          </div>
-
+          
           {/* Trip Fee */}
           <div className={styles.ohdSection}>
             <div className={styles.ohdSectionHeader}>

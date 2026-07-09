@@ -200,7 +200,8 @@ export function calculateOhdQuote(project, setup) {
     const paneStylePrice = colorOpacityPct * dimensionPrice;
     // Insulation price: ((sqft * track_price) / multiplier) rounded to nearest 5, then * qty
     const insulationPrice = roundToNearest((sqft * trackPrice) / multiplier, 5) * qty;
-    const windowsPrice = winQty * winPrice;
+    // Windows price: (windows_price / multiplier) * windows_quantity
+    const windowsPrice = (winPrice / multiplier) * winQty;
     const openerTotal = openerQty * openerPrice;
     const itemTotal = dimensionPrice + paneStylePrice + insulationPrice + windowsPrice + openerTotal;
 

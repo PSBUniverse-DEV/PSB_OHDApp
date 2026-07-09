@@ -343,6 +343,35 @@ create table public.ohd_t_projects (
 
 
  ============================================================
+# WINDOWS PRICE FORMULA
+ ============================================================
+ Calculated per door item. Stored in ohd_t_project_items.estprice_windows.
+ (Alias: windows_price in ohd_t_project_items)
+
+ windowsPrice → ohd_s_windows_type.windows_price
+                (looked up by ohd_t_project_items.windows_type_id)
+
+ Step-by-step formula:
+
+   Step 1: estprice_windows = (windows_price / multiplier) * windows_quantity
+
+ Constants come from ohd_s_pricing_constants:
+   multiplier  = constant_value WHERE constant_name = 'Multiplier'
+
+ Where:
+   windows_price     = ohd_s_windows_type.windows_price
+                      (selected by windows_type_id matching the item's window type)
+   windows_quantity  = ohd_t_project_items.windows_quantity
+   multiplier        = ohd_s_pricing_constants.constant_value WHERE constant_name = 'Multiplier'
+
+ Example:
+   windows_price = 150.00, windows_quantity = 2, multiplier = 1.25
+
+   Step 1: (150.00 / 1.25) * 2 = 120.00 * 2 = 240.00
+   estprice_windows = 240.00
+
+
+ ============================================================
 # PANE STYLE PRICE FORMULA
  ============================================================
  Calculated per door item. Stored in ohd_t_project_items.estprice_pane_style_door.
