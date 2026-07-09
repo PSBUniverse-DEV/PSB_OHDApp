@@ -302,10 +302,44 @@ create table public.ohd_t_projects (
    Step 5: estprice_dimension = 845
 
 
+ ============================================================
+# INSULATION PRICE FORMULA
+ ============================================================
+ Calculated per door item. Stored in ohd_t_project_items.estprice_insulation.
+ (Alias: insulation_price in ohd_t_project_items)
 
+ trackPrice → ohd_s_track_options.track_price
+              (looked up by ohd_t_project_items.track_id)
 
+ Step-by-step formula:
 
+   Step 1: raw = (width * height) * track_price
+           -- sqft * track_price
 
+   Step 2: rounded = MROUND(raw / multiplier, 5)
+           -- MROUND(value, factor) rounds value to the nearest multiple of factor
+           -- Implementation: Math.round((raw / multiplier) / 5) * 5
+
+   Step 3: estprice_insulation = rounded * quantity
+
+ Constants come from ohd_s_pricing_constants:
+   multiplier  = constant_value WHERE constant_name = 'Multiplier'
+
+ Where:
+   width         = ohd_t_project_items.width (in inches)
+   height        = ohd_t_project_items.height (in inches)
+   track_price   = ohd_s_track_options.track_price
+                  (selected by track_id matching the item's track option)
+   quantity      = ohd_t_project_items.quantity
+   multiplier    = ohd_s_pricing_constants.constant_value WHERE constant_name = 'Multiplier'
+
+ Example:
+   width = 16, height = 8, track_price = 3.50, qty = 2, multiplier = 1.25
+
+   Step 1: (16 * 8) * 3.50          = 128 * 3.50 = 448.00
+   Step 2: MROUND(448.00 / 1.25, 5) = MROUND(358.40, 5) = Math.round(358.40 / 5) * 5 = 72 * 5 = 360
+   Step 3: 360 * 2                  = 720
+   estprice_insulation = 720
 
 relevant files:
 src\modules\ohd\md files\database-table-reference.md

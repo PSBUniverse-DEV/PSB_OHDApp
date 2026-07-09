@@ -284,7 +284,8 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
       ((revAndSeal * 2) * h)
     ) / multiplier;
     const dimensionPrice = Math.round(raw / 5) * 5;
-    const insulationPrice = qty * sqft * insPricePerSqft;
+    // Insulation price: ((sqft * track_price) / multiplier) rounded to nearest 5, then * qty
+    const insulationPrice = Math.round(((sqft * trackPrice) / multiplier) / 5) * 5 * qty;
     const windowsPrice = winQty * winPrice;
     const openerTotal = openerQty * openerPrice;
     const itemTotal = dimensionPrice + insulationPrice + windowsPrice + openerTotal;

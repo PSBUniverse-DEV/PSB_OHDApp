@@ -195,7 +195,8 @@ export function calculateOhdQuote(project, setup) {
     ) / multiplier;
     const dimensionPrice = roundToNearest(raw, 5);
     const paneStylePrice = 0; // Placeholder — will be calculated from pane style setup
-    const insulationPrice = qty * sqft * insPricePerSqft;
+    // Insulation price: ((sqft * track_price) / multiplier) rounded to nearest 5, then * qty
+    const insulationPrice = roundToNearest((sqft * trackPrice) / multiplier, 5) * qty;
     const windowsPrice = winQty * winPrice;
     const openerTotal = openerQty * openerPrice;
     const itemTotal = dimensionPrice + paneStylePrice + insulationPrice + windowsPrice + openerTotal;
