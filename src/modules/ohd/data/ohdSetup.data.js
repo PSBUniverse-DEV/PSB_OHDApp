@@ -119,6 +119,23 @@ export const TABLE_DEFS = [
       { key: "windows_price", label: "Price", type: "number", step: "0.01", required: true },
     ],
   },
+  {
+    key: "pricingConstants",
+    label: "Pricing Constants",
+    pk: "pricing_constant_id",
+    columns: [
+      { key: "constant_name", label: "Constant Name", sortable: true },
+      { key: "constant_value", label: "Value", sortable: true, render: (row) => `$${Number(row.constant_value || 0).toFixed(2)}` },
+      { key: "description", label: "Description", sortable: true },
+      { key: "display_order", label: "Order", sortable: true },
+    ],
+    fields: [
+      { key: "constant_name", label: "Constant Name", required: true },
+      { key: "constant_value", label: "Value ($)", type: "number", step: "0.01", required: true },
+      { key: "description", label: "Description" },
+      { key: "display_order", label: "Display Order", type: "number", step: "1" },
+    ],
+  },
 ];
 
 /** Sidebar-friendly list: key, label, count (filled by the view). */

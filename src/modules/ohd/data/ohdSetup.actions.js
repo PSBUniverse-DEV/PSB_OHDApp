@@ -5,14 +5,15 @@ import { getSupabaseAdmin } from "@/core/supabase/admin";
 // ─── Setup Table Mapping ───────────────────────────────────
 
 const SETUP_TABLES = {
-  statuses:        { table: "ohd_s_statuses",        pk: "status_id" },
-  colors:          { table: "ohd_s_colors",          pk: "color_id" },
-  paneStyles:      { table: "ohd_s_pane_style",      pk: "pane_style_id" },
-  insulationTypes: { table: "ohd_s_insulation_type", pk: "ins_type_id" },
-  openers:         { table: "ohd_s_openers",         pk: "opener_id" },
-  tripRates:       { table: "ohd_s_trip_rates",      pk: "trip_id" },
-  trackOptions:    { table: "ohd_s_track_options",   pk: "track_id" },
-  windowTypes:     { table: "ohd_s_windows_type",    pk: "windows_type_id" },
+  statuses:        { table: "ohd_s_statuses",           pk: "status_id" },
+  colors:          { table: "ohd_s_colors",             pk: "color_id" },
+  paneStyles:      { table: "ohd_s_pane_style",         pk: "pane_style_id" },
+  insulationTypes: { table: "ohd_s_insulation_type",    pk: "ins_type_id" },
+  openers:         { table: "ohd_s_openers",            pk: "opener_id" },
+  tripRates:       { table: "ohd_s_trip_rates",         pk: "trip_id" },
+  trackOptions:    { table: "ohd_s_track_options",      pk: "track_id" },
+  windowTypes:     { table: "ohd_s_windows_type",       pk: "windows_type_id" },
+  pricingConstants: { table: "ohd_s_pricing_constants", pk: "pricing_constant_id" },
 };
 
 function resolveTable(tableKey) {
@@ -35,6 +36,7 @@ export async function loadOhdSetup() {
     tripRates:       supabase.from("ohd_s_trip_rates").select("*").order("trip_id"),
     trackOptions:    supabase.from("ohd_s_track_options").select("*").order("track_id"),
     windowTypes:     supabase.from("ohd_s_windows_type").select("*").order("windows_type_id"),
+    pricingConstants: supabase.from("ohd_s_pricing_constants").select("*").order("display_order"),
   };
 
   const keys = Object.keys(queries);

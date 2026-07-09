@@ -24,6 +24,7 @@ const SIDEBAR_ICONS = {
   tripRates:       faTruck,
   windowTypes:     faWindowMaximize,
   trackOptions:    faRulerCombined,
+  pricingConstants: faGear,
 };
 
 // ─── Sidebar ────────────────────────────────────────────────
