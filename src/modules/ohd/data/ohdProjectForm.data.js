@@ -148,7 +148,7 @@ export function calculateOhdQuote(project, setup) {
   };
 
   const headerSeal = getProjectConstant("header_seal", "Header Seal");
-  const revAndSeal = getProjectConstant("rev_and_seal", "Rev and Seal");
+  const revAndSeal = getProjectConstant("rev_and_seal", "Rev Seal");
   const multiplier = getProjectConstant("multiplier", "Multiplier") || 1;
 
   const itemResults = items.map((i) => {

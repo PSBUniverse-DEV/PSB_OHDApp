@@ -70,7 +70,7 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
       tripId: String(tripFeeRates[0]?.trip_id || ""),
       // Auto-populate pricing constants from setup
       header_seal: getDefaultConstant("Header Seal"),
-      rev_and_seal: getDefaultConstant("Rev and Seal"),
+      rev_and_seal: getDefaultConstant("Rev Seal"),
       multiplier: getDefaultConstant("Multiplier"),
     };
   }, [isEdit, projectData, statuses, tripFeeRates, setup.pricingConstants]);
@@ -438,7 +438,7 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                 </Col>
                 <Col md={4}>
                   <Form.Group>
-                    <Form.Label className={styles.ohdFormLabel}>Rev and Seal</Form.Label>
+                    <Form.Label className={styles.ohdFormLabel}>Rev Seal</Form.Label>
                     <Form.Control className="ohd-field-control" type="number" step="0.01" value={project.rev_and_seal || ""} onChange={(e) => updateField("rev_and_seal", e.target.value)} disabled={!canEditPricingConstants} />
                   </Form.Group>
                 </Col>
@@ -729,7 +729,7 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                             {/* Pricing Constants Used */}
                             <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid #eee", fontSize: "0.68rem", color: "#777", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "4px 8px" }}>
                               <span>Header Seal: {fmtCurrency(project.header_seal || pricingConstantByName["Header Seal"])}</span>
-                              <span>Rev and Seal: {fmtCurrency(project.rev_and_seal || pricingConstantByName["Rev and Seal"])}</span>
+                              <span>Rev Seal: {fmtCurrency(project.rev_and_seal || pricingConstantByName["Rev Seal"])}</span>
                               <span>Multiplier: {project.multiplier || pricingConstantByName["Multiplier"] || 1}</span>
                             </div>
                           </div>

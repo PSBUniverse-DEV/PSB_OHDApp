@@ -253,40 +253,53 @@ create table public.ohd_t_projects (
  ============================================================
 # DIMENSION PRICE FORMULA
  ============================================================
- Calculated per door item. Stored in ohd_t_project_items.dimension_price.
+ Calculated per door item. Stored in ohd_t_project_items.estprice_dimension.
+ (Alias: dimension_price in ohd_t_project_items)
 
  pricePerSqFt → ohd_s_insulation_type.price_persqft
                 (looked up by ohd_t_project_items.ins_type_id)
 
- Formula:
+ Step-by-step formula:
 
-   raw =
-   (
-     (((width * height) * pricePerSqFt) * quantity) +
-     (width * header_seal) +
-     ((rev_and_seal * 2) * height)
-   ) / multiplier
+   Step 1: insulation_cost = (((width * height) * pricePerSqFt) * quantity)
+           -- ((sqft * pricePerSqFt) * quantity)
 
-   dimension_price = ROUND(raw / 5) * 5    -- round to nearest 5
+   Step 2: header_seal_cost = (width * header_seal)
+
+   Step 3: rev_seal_cost = ((rev_seal * 2) * height)
+
+   Step 4: raw = (Step 1 + Step 2 + Step 3) / multiplier
+           dimension_price = MROUND(raw, 5)
+           -- MROUND(value, factor) rounds value to the nearest multiple of factor
+           -- Implementation: Math.round(raw / 5) * 5
+
+   Step 5: estprice_dimension = dimension_price
+
+ Constants come from ohd_s_pricing_constants:
+   header_seal = constant_value WHERE constant_name = 'Header Seal'
+   rev_seal    = constant_value WHERE constant_name = 'Rev Seal'
+   multiplier  = constant_value WHERE constant_name = 'Multiplier'
 
  Where:
    width         = ohd_t_project_items.width (in inches)
    height        = ohd_t_project_items.height (in inches)
    pricePerSqFt  = ohd_s_insulation_type.price_persqft
+                  (selected by ins_type_id matching the item's insulation model)
    quantity      = ohd_t_project_items.quantity
-  header_seal   = ohd_s_pricing_constants.constant_value WHERE constant_name = 'Header Seal'
-  rev_and_seal  = ohd_s_pricing_constants.constant_value WHERE constant_name = 'Rev and Seal'
-  multiplier    = ohd_s_pricing_constants.constant_value WHERE constant_name = 'Multiplier'
+   header_seal   = ohd_s_pricing_constants.constant_value WHERE constant_name = 'Header Seal'
+   rev_seal      = ohd_s_pricing_constants.constant_value WHERE constant_name = 'Rev Seal'
+   multiplier    = ohd_s_pricing_constants.constant_value WHERE constant_name = 'Multiplier'
 
  Example:
    width = 16, height = 8, pricePerSqFt = 8.00, qty = 1
-  header_seal = 0.95, rev_and_seal = 0.90, multiplier = 1.25
+   header_seal = 0.95, rev_seal = 0.90, multiplier = 1.25
 
-  raw = (((16 * 8) * 8.00) * 1) + (16 * 0.95) + ((0.90 * 2) * 8)
-      = 1024 + 15.20 + 14.40
-      = 1053.60
-
-   dimension_price = ROUND(1053.60 / 5) * 5 = 1055
+   Step 1: (((16 * 8) * 8.00) * 1)     = 1024.00
+   Step 2: (16 * 0.95)                  = 15.20
+   Step 3: ((0.90 * 2) * 8)             = 14.40
+   Step 4: (1024.00 + 15.20 + 14.40) / 1.25 = 1053.60 / 1.25 = 842.88
+           MROUND(842.88, 5) = Math.round(842.88 / 5) * 5 = 169 * 5 = 845
+   Step 5: estprice_dimension = 845
 
 
 

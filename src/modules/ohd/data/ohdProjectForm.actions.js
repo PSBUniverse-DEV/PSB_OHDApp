@@ -275,7 +275,7 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
       return c ? Number(c.constant_value) || 0 : 0;
     };
     const headerSeal = getProjectConstant("header_seal", "Header Seal");
-    const revAndSeal = getProjectConstant("rev_and_seal", "Rev and Seal");
+    const revAndSeal = getProjectConstant("rev_and_seal", "Rev Seal");
     const multiplier = getProjectConstant("multiplier", "Multiplier") || 1;
     
     const raw = (
@@ -360,7 +360,7 @@ export async function createProjectSnapshot({ projId, project, items, extras, se
   };
 
   const headerSeal = getProjectConstant("header_seal", "Header Seal");
-  const revAndSeal = getProjectConstant("rev_and_seal", "Rev and Seal");
+  const revAndSeal = getProjectConstant("rev_and_seal", "Rev Seal");
   const multiplier = getProjectConstant("multiplier", "Multiplier") || 1;
 
   // Load lookup data for names
