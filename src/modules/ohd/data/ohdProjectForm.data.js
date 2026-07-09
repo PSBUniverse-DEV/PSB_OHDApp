@@ -194,7 +194,10 @@ export function calculateOhdQuote(project, setup) {
       ((revAndSeal * 2) * h)
     ) / multiplier;
     const dimensionPrice = roundToNearest(raw, 5);
-    const paneStylePrice = 0; // Placeholder — will be calculated from pane style setup
+    // Pane style price: color_opacity (%) * dimension_price
+    // e.g. color_opacity = 50 (50%), dimension_price = 845 => 0.50 * 845 = 422.50
+    const colorOpacityPct = (Number(i.color_opacity) || 0) / 100;
+    const paneStylePrice = colorOpacityPct * dimensionPrice;
     // Insulation price: ((sqft * track_price) / multiplier) rounded to nearest 5, then * qty
     const insulationPrice = roundToNearest((sqft * trackPrice) / multiplier, 5) * qty;
     const windowsPrice = winQty * winPrice;

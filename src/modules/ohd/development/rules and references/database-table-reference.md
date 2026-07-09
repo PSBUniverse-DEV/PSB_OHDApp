@@ -341,6 +341,29 @@ create table public.ohd_t_projects (
    Step 3: 360 * 2                  = 720
    estprice_insulation = 720
 
+
+ ============================================================
+# PANE STYLE PRICE FORMULA
+ ============================================================
+ Calculated per door item. Stored in ohd_t_project_items.estprice_pane_style_door.
+ (Alias: pane_style_price in ohd_t_project_items)
+
+ Step-by-step formula:
+
+   Step 1: estprice_pane_style_door = (color_opacity_pct) * estprice_dimension
+           -- color_opacity_pct = color_opacity / 100
+           -- color_opacity is the opacity percentage (e.g. 50 = 50%)
+
+ Where:
+   color_opacity  = ohd_t_project_items.color_opacity (percentage, e.g. 50)
+   estprice_dimension = ohd_t_project_items.dimension_price (already calculated)
+
+ Example:
+   color_opacity = 50 (50%), dimension_price = 845
+
+   Step 1: (50 / 100) * 845 = 0.50 * 845 = 422.50
+   estprice_pane_style_door = 422.50
+
 relevant files:
 src\modules\ohd\md files\database-table-reference.md
 src\modules\ohd\data\ohdProjectForm.data.js

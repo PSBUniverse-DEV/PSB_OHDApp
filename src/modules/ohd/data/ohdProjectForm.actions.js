@@ -284,15 +284,18 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
       ((revAndSeal * 2) * h)
     ) / multiplier;
     const dimensionPrice = Math.round(raw / 5) * 5;
+    // Pane style price: color_opacity (%) * dimension_price
+    const colorOpacityPct = (Number(item.color_opacity) || 0) / 100;
+    const paneStylePrice = colorOpacityPct * dimensionPrice;
     // Insulation price: ((sqft * track_price) / multiplier) rounded to nearest 5, then * qty
     const insulationPrice = Math.round(((sqft * trackPrice) / multiplier) / 5) * 5 * qty;
     const windowsPrice = winQty * winPrice;
     const openerTotal = openerQty * openerPrice;
-    const itemTotal = dimensionPrice + insulationPrice + windowsPrice + openerTotal;
+    const itemTotal = dimensionPrice + paneStylePrice + insulationPrice + windowsPrice + openerTotal;
     
     return {
       dimension_price: dimensionPrice,
-      pane_style_price: 0,
+      pane_style_price: paneStylePrice,
       insulation_price: insulationPrice,
       windows_price: windowsPrice,
       item_total: itemTotal,
