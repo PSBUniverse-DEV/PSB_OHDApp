@@ -5,8 +5,8 @@ import styles from "./DoorQuoteForm.module.css";
 
 export default function DoorStyleRow({ item, index, onUpdate, doorConfigurations }) {
   return (
-    <div className={styles.formRow}>
-      <div className={styles.field} style={{ flex: 1 }}>
+    <div className={styles.formRowConfiguration}>
+      <div className={styles.field}>
         <label className={styles.fieldLabel}>Door Configuration</label>
         <Form.Select
           className="ohd-field-control"

@@ -6,7 +6,7 @@ import styles from "./DoorQuoteForm.module.css";
 export default function InsulationRow({ item, index, onUpdate, colors, trackOptions }) {
   return (
     <div className={styles.formRowInsulation}>
-      <div className={styles.field} style={{ flex: "0 0 15%" }}>
+      <div className={styles.field}>
         <label className={styles.fieldLabel}>Color %</label>
         <Form.Control
           className="ohd-field-control"
@@ -16,7 +16,7 @@ export default function InsulationRow({ item, index, onUpdate, colors, trackOpti
           onChange={(e) => onUpdate(index, "color_opacity", e.target.value)}
         />
       </div>
-      <div className={styles.field} style={{ flex: "0 0 45%" }}>
+      <div className={styles.field}>
         <label className={styles.fieldLabel}>Color Option</label>
         <Form.Select
           className="ohd-field-control"
@@ -31,7 +31,7 @@ export default function InsulationRow({ item, index, onUpdate, colors, trackOpti
           ))}
         </Form.Select>
       </div>
-      <div className={styles.field} style={{ flex: "0 0 40%" }}>
+      <div className={styles.field}>
         <label className={styles.fieldLabel}>Track Option</label>
         <Form.Select
           className="ohd-field-control"

@@ -29,8 +29,7 @@ export async function loadOhdFormSetup() {
   const queries = {
     statuses:        supabase.from("ohd_s_statuses").select("*").order("status_id"),
     colors:          supabase.from("ohd_s_colors").select("*").order("color_id"),
-    paneStyles:      supabase.from("ohd_s_pane_style").select("*").order("pane_style_id"),
-    insulationTypes: supabase.from("ohd_s_insulation_type").select("*").order("ins_type_id"),
+    doorConfigurations: supabase.from("ohd_s_insulation_type").select("*").order("ins_type_id"),
     openers:         supabase.from("ohd_s_openers").select("*").order("opener_id"),
     tripRates:       supabase.from("ohd_s_trip_rates").select("*").order("trip_id"),
     windowTypes:     supabase.from("ohd_s_windows_type").select("*").order("windows_type_id"),
@@ -369,9 +368,8 @@ export async function createProjectSnapshot({ projId, project, items, extras, se
   const multiplier = getProjectConstant("multiplier", "Multiplier") || 1;
 
   // Load lookup data for names
-  const [colorsResult, paneStylesResult, insulationResult, openersResult, windowTypesResult, trackResult, tripResult] = await Promise.all([
+  const [colorsResult, insulationResult, openersResult, windowTypesResult, trackResult, tripResult] = await Promise.all([
     supabase.from("ohd_s_colors").select("color_id, color_name"),
-    supabase.from("ohd_s_pane_style").select("pane_style_id, style_name"),
     supabase.from("ohd_s_insulation_type").select("ins_type_id, type_name"),
     supabase.from("ohd_s_openers").select("opener_id, opener_name, opener_price"),
     supabase.from("ohd_s_windows_type").select("windows_type_id, windows_type, windows_glass_category"),
@@ -380,7 +378,6 @@ export async function createProjectSnapshot({ projId, project, items, extras, se
   ]);
 
   const colorMap = (colorsResult.data || []).reduce((m, c) => { m.set(String(c.color_id), c.color_name); return m; }, new Map());
-  const paneStyleMap = (paneStylesResult.data || []).reduce((m, p) => { m.set(String(p.pane_style_id), p.style_name); return m; }, new Map());
   const insTypeMap = (insulationResult.data || []).reduce((m, i) => { m.set(String(i.ins_type_id), i.type_name); return m; }, new Map());
   const openerMap = (openersResult.data || []).reduce((m, o) => { m.set(String(o.opener_id), o.opener_name); return m; }, new Map());
   const windowTypeMap = (windowTypesResult.data || []).reduce((m, w) => { m.set(String(w.windows_type_id), w); return m; }, new Map());
@@ -413,8 +410,6 @@ export async function createProjectSnapshot({ projId, project, items, extras, se
       color_opacity: Number(item.color_opacity) || 0,
       color_id: Number(item.color_id) || null,
       color_name: colorMap.get(String(item.color_id)) || null,
-      pane_style_id: Number(item.pane_style_id) || null,
-      pane_style_name: paneStyleMap.get(String(item.pane_style_id)) || null,
       ins_type_id: Number(item.ins_type_id) || null,
       type_name: insTypeMap.get(String(item.ins_type_id)) || null,
       model: item.model || null,
