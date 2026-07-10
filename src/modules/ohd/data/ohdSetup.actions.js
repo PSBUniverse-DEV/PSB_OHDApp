@@ -7,8 +7,7 @@ import { getSupabaseAdmin } from "@/core/supabase/admin";
 const SETUP_TABLES = {
   statuses:        { table: "ohd_s_statuses",           pk: "status_id" },
   colors:          { table: "ohd_s_colors",             pk: "color_id" },
-  paneStyles:      { table: "ohd_s_pane_style",         pk: "pane_style_id" },
-  insulationTypes: { table: "ohd_s_insulation_type",    pk: "ins_type_id" },
+  doorConfigurations: { table: "ohd_s_insulation_type", pk: "ins_type_id" },
   openers:         { table: "ohd_s_openers",            pk: "opener_id" },
   tripRates:       { table: "ohd_s_trip_rates",         pk: "trip_id" },
   trackOptions:    { table: "ohd_s_track_options",      pk: "track_id" },
@@ -30,8 +29,7 @@ export async function loadOhdSetup() {
   const queries = {
     statuses:        supabase.from("ohd_s_statuses").select("*").order("status_id"),
     colors:          supabase.from("ohd_s_colors").select("*").order("color_id"),
-    paneStyles:      supabase.from("ohd_s_pane_style").select("*").order("pane_style_id"),
-    insulationTypes: supabase.from("ohd_s_insulation_type").select("*").order("ins_type_id"),
+    doorConfigurations: supabase.from("ohd_s_insulation_type").select("*").order("ins_type_id"),
     openers:         supabase.from("ohd_s_openers").select("*").order("opener_id"),
     tripRates:       supabase.from("ohd_s_trip_rates").select("*").order("trip_id"),
     trackOptions:    supabase.from("ohd_s_track_options").select("*").order("track_id"),

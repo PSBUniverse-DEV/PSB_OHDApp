@@ -237,11 +237,11 @@ export async function saveOhdProject({ isEdit, projectId, header, items, extras 
     const h = Number(item.height) || 0;
     const sqft = w * h;
     
-    const insTypes = Array.isArray(setup.insulationTypes) ? setup.insulationTypes : [];
-    const selectedIns = item.ins_type_id
-      ? insTypes.find((t) => String(t.ins_type_id) === String(item.ins_type_id))
+    const doorConfigs = Array.isArray(setup.doorConfigurations) ? setup.doorConfigurations : [];
+    const selectedConfig = item.ins_type_id
+      ? doorConfigs.find((t) => String(t.ins_type_id) === String(item.ins_type_id))
       : null;
-    const insPricePerSqft = selectedIns ? Number(selectedIns.price_persqft) || 0 : 0;
+    const insPricePerSqft = selectedConfig ? Number(selectedConfig.price_persqft) || 0 : 0;
     
     const trackOpts = Array.isArray(setup.trackOptions) ? setup.trackOptions : [];
     const selectedTrack = item.track_id

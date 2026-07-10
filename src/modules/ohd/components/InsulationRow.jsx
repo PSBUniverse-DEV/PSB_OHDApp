@@ -3,46 +3,35 @@
 import { Form } from "react-bootstrap";
 import styles from "./DoorQuoteForm.module.css";
 
-function getModelsForInsulation(insulationTypes, insTypeId) {
-  if (!insTypeId) return [];
-  const ins = insulationTypes.find(t => String(t.ins_type_id) === String(insTypeId));
-  if (!ins || !ins.model) return [];
-  return ins.model.split(",").map(m => m.trim()).filter(Boolean);
-}
-
-export default function InsulationRow({ item, index, onUpdate, insulationTypes, trackOptions }) {
-  const models = getModelsForInsulation(insulationTypes, item.ins_type_id);
+export default function InsulationRow({ item, index, onUpdate, colors, trackOptions }) {
   return (
     <div className={styles.formRowInsulation}>
-      <div className={styles.field}>
-        <label className={styles.fieldLabel}>Insulation</label>
+      <div className={styles.field} style={{ flex: "0 0 15%" }}>
+        <label className={styles.fieldLabel}>Color %</label>
+        <Form.Control
+          className="ohd-field-control"
+          type="number"
+          placeholder="%"
+          value={item.color_opacity || ""}
+          onChange={(e) => onUpdate(index, "color_opacity", e.target.value)}
+        />
+      </div>
+      <div className={styles.field} style={{ flex: "0 0 45%" }}>
+        <label className={styles.fieldLabel}>Color Option</label>
         <Form.Select
           className="ohd-field-control"
-          value={item.ins_type_id || ""}
-          onChange={(e) => onUpdate(index, "ins_type_id", e.target.value)}
+          value={item.color_id || ""}
+          onChange={(e) => onUpdate(index, "color_id", e.target.value)}
         >
           <option value="">Select...</option>
-          {(insulationTypes || []).map((t) => (
-            <option key={t.ins_type_id} value={String(t.ins_type_id)}>
-              {t.type_name}
+          {(colors || []).map((c) => (
+            <option key={c.color_id} value={String(c.color_id)}>
+              {c.color_name}
             </option>
           ))}
         </Form.Select>
       </div>
-      <div className={styles.field}>
-        <label className={styles.fieldLabel}>Model</label>
-        <Form.Select
-          className="ohd-field-control"
-          value={item.model || ""}
-          onChange={(e) => onUpdate(index, "model", e.target.value)}
-        >
-          <option value="">Select...</option>
-          {models.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </Form.Select>
-      </div>
-      <div className={styles.field}>
+      <div className={styles.field} style={{ flex: "0 0 40%" }}>
         <label className={styles.fieldLabel}>Track Option</label>
         <Form.Select
           className="ohd-field-control"

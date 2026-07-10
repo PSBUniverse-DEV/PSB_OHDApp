@@ -8,36 +8,36 @@
 
 .formRow {
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 1fr;
   gap: 8px;
   align-items: end;
 }
 
 .formRowInsulation {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: 15% 45% 40%;
+  gap: 12px;
   align-items: end;
 }
 
 .formRowDimension {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: 15% 42.5% 42.5%;
+  gap: 12px;
   align-items: end;
 }
 
 .formRowOpener {
   display: grid;
-  grid-template-columns: 80px 1fr;
-  gap: 8px;
+  grid-template-columns: 15% 85%;
+  gap: 12px;
   align-items: end;
 }
 
 .formRowWindows {
   display: grid;
-  grid-template-columns: 80px 1fr;
-  gap: 8px;
+  grid-template-columns: 15% 85%;
+  gap: 12px;
   align-items: end;
 }
 

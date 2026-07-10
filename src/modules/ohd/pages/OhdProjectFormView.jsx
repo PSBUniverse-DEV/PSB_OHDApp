@@ -35,8 +35,7 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
   const statuses = useMemo(() => Array.isArray(setup.statuses) ? setup.statuses : [], [setup.statuses]);
   const tripFeeRates = useMemo(() => Array.isArray(setup.tripRates) ? setup.tripRates : [], [setup.tripRates]);
   const colors = useMemo(() => Array.isArray(setup.colors) ? setup.colors : [], [setup.colors]);
-  const paneStyles = useMemo(() => Array.isArray(setup.paneStyles) ? setup.paneStyles : [], [setup.paneStyles]);
-  const insulationTypes = useMemo(() => Array.isArray(setup.insulationTypes) ? setup.insulationTypes : [], [setup.insulationTypes]);
+  const doorConfigurations = useMemo(() => Array.isArray(setup.doorConfigurations) ? setup.doorConfigurations : [], [setup.doorConfigurations]);
   const openers = useMemo(() => Array.isArray(setup.openers) ? setup.openers : [], [setup.openers]);
   const windowTypes = useMemo(() => Array.isArray(setup.windowTypes) ? setup.windowTypes : [], [setup.windowTypes]);
   const trackOptions = useMemo(() => Array.isArray(setup.trackOptions) ? setup.trackOptions : [], [setup.trackOptions]);
@@ -145,17 +144,11 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
     return map;
   }, [colors]);
 
-  const paneStyleNameById = useMemo(() => {
+  const doorConfigNameById = useMemo(() => {
     const map = {};
-    (paneStyles || []).forEach((p) => { map[String(p.pane_style_id)] = p.style_name || ""; });
+    (doorConfigurations || []).forEach((t) => { map[String(t.ins_type_id)] = `${t.type_name || ""} - ${t.r_value || ""} - ${t.model || ""}`; });
     return map;
-  }, [paneStyles]);
-
-  const insTypeNameById = useMemo(() => {
-    const map = {};
-    (insulationTypes || []).forEach((t) => { map[String(t.ins_type_id)] = t.type_name || ""; });
-    return map;
-  }, [insulationTypes]);
+  }, [doorConfigurations]);
 
   const openerNameById = useMemo(() => {
     const map = {};
@@ -461,8 +454,8 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                   </div>
                   <div className={doorFormStyles.doorForm}>
                     <DimensionRow item={item} index={i} onUpdate={updateItem} disabled={!canEditItems} />
-                    <DoorStyleRow item={item} index={i} onUpdate={updateItem} paneStyles={paneStyles} colors={colors} disabled={!canEditItems} />
-                    <InsulationRow item={item} index={i} onUpdate={updateItem} insulationTypes={insulationTypes} trackOptions={trackOptions} disabled={!canEditItems} />
+                    <DoorStyleRow item={item} index={i} onUpdate={updateItem} doorConfigurations={doorConfigurations} disabled={!canEditItems} />
+                    <InsulationRow item={item} index={i} onUpdate={updateItem} colors={colors} trackOptions={trackOptions} disabled={!canEditItems} />
                     <OpenerRow item={item} index={i} onUpdate={updateItem} openers={openers} disabled={!canEditItems} />
                     <WindowRow item={item} index={i} onUpdate={updateItem} windowTypes={windowTypes} disabled={!canEditItems} />
                   </div>
@@ -616,9 +609,8 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                         if (!Number(item.quantity) && !Number(item.width)) return null;
                         const calc = (quoteResult?.itemResults || [])[i] || {};
                         const openerCost = (item.opener_quantity || 0) * (openers.find(o => String(o.opener_id) === String(item.opener_id))?.opener_price || 0);
-                        const paneStyle = paneStyleNameById[String(item.pane_style_id)] || "—";
                         const colorName = colorNameById[String(item.color_id)] || "—";
-                        const insType = insTypeNameById[String(item.ins_type_id)] || "—";
+                        const doorConfig = doorConfigNameById[String(item.ins_type_id)] || "—";
                         const trackName = trackOptions.find(t => String(t.track_id) === String(item.track_id))?.track_name || "—";
                         const openerName = openerNameById[String(item.opener_id)] || "—";
                         const windowsName = windowsTypeNameById[String(item.windows_type_id)] || "—";
@@ -642,23 +634,19 @@ export default function OhdProjectFormView({ mode = "create", projectId = null, 
                                   <div style={{ fontWeight: 500 }}>{item.width || "—"}" × {item.height || "—"}"</div>
                                 </div>
                               </div>
-                              {/* Row 2: Pane Style Door | Color */}
+                              {/* Row 2: Door Configuration | Color */}
                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", marginBottom: 6, fontSize: "0.72rem" }}>
                                 <div>
-                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Pane Style Door</div>
-                                  <div style={{ fontWeight: 500 }}>{paneStyle}</div>
+                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Door Configuration</div>
+                                  <div style={{ fontWeight: 500 }}>{doorConfig}</div>
                                 </div>
                                 <div>
                                   <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Color</div>
                                   <div style={{ fontWeight: 500 }}>{item.color_opacity ? `${item.color_opacity}%` : ""} {colorName}</div>
                                 </div>
                               </div>
-                              {/* Row 3: Insulation + Model | Track Option */}
+                              {/* Row 3: Track Option */}
                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", marginBottom: 6, fontSize: "0.72rem" }}>
-                                <div>
-                                  <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Insulation</div>
-                                  <div style={{ fontWeight: 500 }}>{insType}{item.model ? ` / ${item.model}` : ""}</div>
-                                </div>
                                 <div>
                                   <div style={{ fontSize: "0.65rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: 1 }}>Track Option</div>
                                   <div style={{ fontWeight: 500 }}>{trackName}</div>

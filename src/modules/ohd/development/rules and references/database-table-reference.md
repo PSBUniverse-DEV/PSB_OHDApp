@@ -9,7 +9,7 @@
  ─── Setup Tables ──────────────────────────────────────────
 
  ohd_s_colors           : Color lookup
- ohd_s_insulation_type  : Insulation types with price_persqft
+ohd_s_insulation_type  : Door configurations (type + r_value + model) with price_persqft
  ohd_s_statuses         : Project statuses
  ohd_s_openers          : Opener options with opener_price
  ohd_s_track_options    : Track options with track_price
@@ -250,6 +250,22 @@ create table public.ohd_t_projects (
 
 
 ### ALL FORMULA SHOULD BE LISTED HERE
+ ============================================================
+# DOOR CONFIGURATION
+ ============================================================
+ The ohd_s_insulation_type table stores complete door configurations.
+ Each row contains:
+   - type_name  : Pane/Panel style (e.g. "Classic Raised Panel Short")
+   - r_value    : Insulation R-value (e.g. "Insulated R6.8")
+   - model      : Model number (e.g. "5210")
+   - price_persqft : Price per square foot
+
+ Display format: {type_name} - {r_value} - {model}
+ Example: "Classic Raised Panel Short - Insulated R6.8 - 5210"
+
+ The UI uses a single "Door Configuration" dropdown instead of
+ separate Pane Style, Insulation, and Model dropdowns.
+
  ============================================================
 # DIMENSION PRICE FORMULA
  ============================================================

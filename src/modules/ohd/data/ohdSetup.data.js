@@ -29,26 +29,14 @@ export const TABLE_DEFS = [
     ],
   },
   {
-    key: "paneStyles",
-    label: "Pane Styles",
-    pk: "pane_style_id",
-    columns: [
-      { key: "style_name", label: "Style Name", sortable: true },
-    ],
-    fields: [
-      { key: "style_name", label: "Style Name", required: true },
-    ],
-  },
-  {
-    key: "insulationTypes",
-    label: "Insulation Types",
+    key: "doorConfigurations",
+    label: "Door Configurations",
     pk: "ins_type_id",
     columns: [
-      { key: "type_name", label: "Type Name", sortable: true },
+      { key: "display_name", label: "Configuration", sortable: true, render: (row) => `${row.type_name || ""} - ${row.r_value || ""} - ${row.model || ""}` },
+      { key: "type_name", label: "Type", sortable: true },
       { key: "r_value", label: "R-Value", sortable: true },
       { key: "model", label: "Model", sortable: true },
-      { key: "construct", label: "Construct", sortable: true },
-      { key: "steel", label: "Steel", sortable: true },
       { key: "price_persqft", label: "Price/sqft", sortable: true, render: (row) => `$${Number(row.price_persqft || 0).toFixed(2)}` },
     ],
     fields: [

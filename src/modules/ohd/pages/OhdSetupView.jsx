@@ -18,8 +18,7 @@ import "./setup/setup-workspace.css";
 const SIDEBAR_ICONS = {
   statuses:        faTable,
   colors:          faPalette,
-  paneStyles:      faDoorOpen,
-  insulationTypes: faLayerGroup,
+  doorConfigurations: faLayerGroup,
   openers:         faGear,
   tripRates:       faTruck,
   windowTypes:     faWindowMaximize,

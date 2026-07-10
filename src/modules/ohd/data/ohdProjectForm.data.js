@@ -157,12 +157,12 @@ export function calculateOhdQuote(project, setup) {
     const h = Number(i.height) || 0;
     const sqft = w * h;
 
-    // Lookup insulation price per sqft
-    const insTypes = Array.isArray(setup.insulationTypes) ? setup.insulationTypes : [];
-    const selectedIns = i.ins_type_id
-      ? insTypes.find((t) => String(t.ins_type_id) === String(i.ins_type_id))
+    // Lookup door configuration (contains type, r_value, model, price_persqft)
+    const doorConfigs = Array.isArray(setup.doorConfigurations) ? setup.doorConfigurations : [];
+    const selectedConfig = i.ins_type_id
+      ? doorConfigs.find((t) => String(t.ins_type_id) === String(i.ins_type_id))
       : null;
-    const insPricePerSqft = selectedIns ? Number(selectedIns.price_persqft) || 0 : 0;
+    const insPricePerSqft = selectedConfig ? Number(selectedConfig.price_persqft) || 0 : 0;
 
     // Lookup track price
     const trackOpts = Array.isArray(setup.trackOptions) ? setup.trackOptions : [];
