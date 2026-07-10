@@ -1,58 +1,73 @@
-/* ─── Door Quote Form — Compact Grid Rows ─── */
+/* ─── Door Quote Form — Balanced Layout ─── */
 
 .doorForm {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
+
+/* ─── Row Layouts ─── */
 
 .formRow {
   display: grid;
-  grid-template-columns: 1fr;
   gap: 8px;
-  align-items: end;
-}
-
-.formRowInsulation {
-  display: grid;
-  grid-template-columns: 15% 45% 40%;
-  gap: 12px;
   align-items: end;
 }
 
 .formRowDimension {
   display: grid;
-  grid-template-columns: 15% 42.5% 42.5%;
-  gap: 12px;
+  grid-template-columns: 90px 1fr 1fr;
+  gap: 8px;
+  align-items: end;
+}
+
+.formRowConfiguration {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  align-items: end;
+  background: #fafcfe;
+  padding: 8px 10px;
+  margin: 0 -14px;
+  width: calc(100% + 28px);
+  border-radius: 4px;
+}
+
+.formRowInsulation {
+  display: grid;
+  grid-template-columns: 90px 1fr 1fr;
+  gap: 8px;
   align-items: end;
 }
 
 .formRowOpener {
   display: grid;
-  grid-template-columns: 15% 85%;
-  gap: 12px;
+  grid-template-columns: 90px 1fr;
+  gap: 8px;
   align-items: end;
 }
 
 .formRowWindows {
   display: grid;
-  grid-template-columns: 15% 85%;
-  gap: 12px;
+  grid-template-columns: 90px 1fr;
+  gap: 8px;
   align-items: end;
 }
+
+/* ─── Field Styling ─── */
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .fieldLabel {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--psb-muted);
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
   line-height: 1.2;
 }
 
@@ -61,7 +76,7 @@
   font-weight: 500;
   color: var(--psb-text);
   padding: 0.1rem 0.35rem;
-  min-height: 26px;
+  min-height: 28px;
   display: flex;
   align-items: center;
   background: #f8f9fb;
@@ -69,24 +84,27 @@
   border-radius: 4px;
 }
 
-/* ─── Compact door card ─── */
+/* ─── Door Card ─── */
 
 .doorCard {
-  background: #fafcfe;
+  background: #ffffff;
   border: 1px solid var(--psb-border);
-  border-radius: 6px;
-  padding: 5px 6px;
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .doorCard + .doorCard {
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .doorCardHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e9ed;
 }
 
 .doorCardTitle {
@@ -108,9 +126,20 @@
 /* ─── Responsive ─── */
 
 @media (max-width: 768px) {
-  .formRow,
+  .formRowDimension,
+  .formRowInsulation,
   .formRowOpener,
   .formRowWindows {
     grid-template-columns: 1fr;
+  }
+
+  .doorCard {
+    padding: 12px;
+  }
+
+  .formRowConfiguration {
+    margin: 0 -12px;
+    width: calc(100% + 24px);
+    padding: 6px 8px;
   }
 }
